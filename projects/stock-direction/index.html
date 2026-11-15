@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Predicting weekly stock direction · Kyi Wai Thant</title>
+<meta name="description" content="A leakage-safe study of whether daily price and volume features predict five-day stock and ETF direction, and why the answer is 'barely'.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%2315223d%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2712%27 fill=%27%23eaa417%27/%3E%3C/svg%3E">
+<meta property="og:title" content="Predicting weekly stock direction · Kyi Wai Thant">
+<meta property="og:description" content="A leakage-safe study of whether daily price and volume features predict five-day stock and ETF direction, and why the answer is 'barely'.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#15223d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../site.css">
+<script src="../../site.js"></script>
+<style>
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+  .steps li { counter-increment: s; padding: 10px 0 10px 40px; position: relative; border-top: 1px solid var(--line); font-size: 15px; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 10px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 500 13px/26px var(--mono); text-align: center; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+  .power-out { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 14px; }
+  .power-out .stat .v { font-size: 26px; }
+  .ok { color: var(--s3); } .no { color: var(--s2); }
+  .curve-meta { font-size: 14px; color: var(--muted); margin: 8px 0 0; }
+</style>
+</head>
+<body data-toc>
+<header class="nav"><div class="wrap nav-in">
+  <a class="brand" href="../../index.html">Kyi Wai Thant</a>
+  <nav aria-label="Site">
+    <a href="../../index.html#projects" aria-current="page">Projects</a>
+    <a href="../../process/index.html">How I work</a>
+    <a href="../../index.html#about">About</a>
+    <a href="../../index.html#contact">Contact</a>
+  </nav>
+</div></header>
+
+<main class="wrap article">
+  <div class="hero prose">
+    <span class="wip">Work in progress</span>
+    <p class="eyebrow">NUS project, Python, scikit-learn, PyTorch, Notebooks 01–16</p>
+    <h1>Can price history predict next week's direction?</h1>
+    <p class="lede">I tried to predict whether a US stock or ETF closes higher five trading days from now, using 17.45 million daily observations. The answer is "barely", and most of this project is about proving exactly why, without fooling myself along the way.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v">17.45M</div><div class="l">daily rows across 8,507 tickers, audited before any modelling</div></div>
+    <div class="stat"><div class="v">54.1%</div><div class="l">stock accuracy on 2016–17 (final model), vs 53.0% for always guessing the base rate</div></div>
+    <div class="stat"><div class="v">0.07</div><div class="l">rank correlation between forecasts and outcomes: small, but consistent every year</div></div>
+    <div class="stat"><div class="v">2.1 pts</div><div class="l">smallest accuracy gain the 2016–17 test can reliably detect</div></div>
+  </div>
+
+  <aside class="inshort"><strong class="t">In short</strong><ul><li>Seven models, from ridge regression to a neural network, reach 53.4% accuracy against a 51.8% baseline on 2013 to 2015.</li><li>The whole market's move decides a large part of each label, and nothing in this data predicts it.</li><li>The models do rank stocks slightly better than chance, in every year tested.</li><li>A fixed formula shows that <a href="#limits">60% accuracy would need five times the signal</a> found here.</li></ul></aside>
+
+  <section>
+    <h2>Setup</h2>
+    <p class="prose">Most stock-prediction projects online report high accuracy because information from the future leaks into training. I spent most of this project making that impossible:</p>
+    <ol class="steps prose">
+      <li><strong>Audit first.</strong> Checked every row for invalid prices, gaps, stale bars and weekend dates, and rebuilt the 2005–2017 trading calendar independently from exchange holiday rules.</li>
+      <li><strong>24 causal features.</strong> Returns, volatility, candle shape, relative volume, beta and market context, computed only from data available at that day's close.</li>
+      <li><strong>Time-based splits with purging.</strong> Train on earlier years and test on a later year. Labels that would reach across the boundary are dropped, and all scaling and clipping is fitted on training data only.</li>
+      <li><strong>Seven model families.</strong> A constant base-rate baseline, ridge, elastic net, an additive spline model (one curve per feature), gradient boosting, extra trees and a deep MLP.</li>
+      <li><strong>Honest uncertainty.</strong> Confidence intervals come from resampling whole blocks of dates, because millions of asset-days are not independent. Holdout tests were written down before scoring.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2 data-short="Seven models">Seven models, one conclusion</h2>
+    <p class="prose">Development results for 2013–2015, measured against the constant baseline. Up and right is better on both measures: log loss for probability quality, accuracy for right-or-wrong direction calls.</p>
+    <div class="panel">
+      <div class="controls"><div class="seg" role="group" aria-label="Asset group"><button aria-pressed="true" data-dev="Stock">Stocks</button><button aria-pressed="false" data-dev="ETF">ETFs</button></div></div>
+      <div id="devchart"></div>
+    </div>
+    <p class="prose">The interpretable additive spline does best on both measures. Gradient boosting was <em>worse than the baseline</em> on stocks, and the deep MLP barely beat it. In a low-signal problem, extra flexibility mostly fits noise.</p>
+  </section>
+
+  <section id="why">
+    <h2 data-short="Why these results">Why we got these results</h2>
+    <p class="prose muted">Weak results are only interesting if you can explain them. The analysis below breaks the target into parts and asks how much each part can be predicted at all.</p>
+
+    <div class="finding">
+      <h3><span class="n">01</span>Much of the label is "did the whole market go up?", which nobody predicted</h3>
+      <p class="prose">On any given week, most stocks move together. On a typical day, the share of stocks that rose anywhere between 26% and 75% (10th to 90th percentile). That shared "market part" accounts for <strong>13% of the label variance for stocks and 20% for ETFs</strong>. If you magically knew each day's market direction, you'd score 65% on stocks (70% on ETFs) with no stock-level information at all.</p>
+      <div class="panel">
+        <div class="controls"><div class="seg" role="group" aria-label="Asset group"><button aria-pressed="true" data-up="Stock">Stocks</button><button aria-pressed="false" data-up="ETF">ETFs</button></div><span class="small muted">Fraction of assets whose 5-day label is "up", per date, 2005–2015</span></div>
+        <div id="upchart"></div>
+      </div>
+      <p class="prose">But that market part was <strong>unpredictable from these features</strong>. A model of it using SPY returns, volatility and the previous week's up fraction did worse than simply using the historical average in all 10 out-of-sample tests, and the up fraction shows no meaningful autocorrelation. Notebook 16 found why: SPY did have some short-term memory (it tended to reverse after big days) in 2005–2009, but it weakened after that and was gone by 2013–2015 (lag-1 autocorrelation +0.01). A market model fitted on the early years had nothing left to use. That sets a hard ceiling for every model.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">02</span>Stock-picking skill is real but tiny; market-timing skill is noise</h3>
+      <p class="prose">I split each model's forecasts into a timing part (its average forecast on each date) and a selection part (how it ranks assets against each other on that date). The selection measure, called the information coefficient (IC), is the daily rank correlation between forecasts and outcomes. It was <strong>positive for every model in every year</strong>, about 0.05–0.08 for stocks, with t-statistics of 3.0–6.6. The timing correlation jumps between −0.29 and +0.29 from year to year.</p>
+      <div class="panel">
+        <p class="panel-title">Timing vs selection, per model and year</p>
+        <p class="panel-sub">Hover a point for the model. Every point sits above zero vertically; horizontally they scatter on both sides.</p>
+        <div class="controls"><div class="seg" role="group" aria-label="Asset group"><button aria-pressed="true" data-ts="Stock">Stocks</button><button aria-pressed="false" data-ts="ETF">ETFs</button></div></div>
+        <div id="tschart"></div>
+      </div>
+      <p class="prose">This explains the model ranking. All model types rank stocks about equally well; the flexible ones lost because they also made confident, wrong calls about the whole market. Replacing each model's daily average with the training base rate, while keeping its ranking, fixed this: on 2013–2015, six of these "timing-removed" models passed the strict test against the baseline (better on both measures in every year, with confidence intervals above zero), where none of the originals had. An IC of 0.07 is about what you'd expect to buy 1–1.5 points of accuracy, and that's what we see.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">03</span>Millions of rows, but few independent observations</h3>
+      <p class="prose">The test period has 2.4 million stock-days, which sounds like overwhelming evidence. But stocks on the same date share the market move, and each 5-day label overlaps the next four. A rough calculation with the 13% shared variance puts it at <strong>only about 8 effectively independent observations per date</strong>, not ~3,400. So the uncertainty depends mostly on how many <em>dates</em> you have.</p>
+      <div class="panel">
+        <p class="panel-title">How much test data would we need?</p>
+        <p class="panel-sub">Smallest accuracy gain over the baseline detectable with 80% power, scaled from the 2016–17 holdout's resampling error.</p>
+        <label class="slider" style="display:flex;gap:12px">Years of test data <input type="range" id="years" min="1" max="30" step="0.05" value="1.85" style="flex:1"><output id="yearsv"></output></label>
+        <div class="power-out">
+          <div class="stat"><div class="v" id="mde"></div><div class="l">detectable accuracy gain</div></div>
+          <div class="stat"><div class="v" id="det1"></div><div class="l">Our best stock gain over the baseline (+1.17 pts): detectable?</div></div>
+          <div class="stat"><div class="v" id="det2"></div><div class="l">A typical model-vs-model gap (~0.3 pts): detectable?</div></div>
+        </div>
+      </div>
+      <p class="prose">The holdout covers about 1.85 years. Our observed gain needs roughly 6 years of clean test data to confirm, and choosing between the top models would need well over a decade. So "the models look the same" really means "this data can't tell them apart", which is different from "they are equal". The formal model confidence set agrees: it can't even reject the constant baseline for stock accuracy.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">04</span>The market changed underneath the model</h3>
+      <p class="prose">Every model was trained on 2005–2015, a period with a strong up-trend. In 2016–17 the models' average predicted probability of "up" fell 1–8 points below the actual up rate. Stable-looking relationships are not stable either: the model learned that high-beta stocks rise more often, which is just "the market mostly went up" hidden inside a stock-level feature. Testing simple recalibration on separate years helped a little on average but never passed the stricter consistency check.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">05</span>What the model actually learned</h3>
+      <p class="prose">The additive spline model is a sum of one curve per feature, so you can read it directly. Each curve below is the frozen holdout model's effect on the log-odds of "up". The faint lines are 12 other fits from different years and quarterly refreshes. When they overlap, the effect is stable.</p>
+      <div class="panel">
+        <div class="controls">
+          <div class="seg" role="group" aria-label="Asset group"><button aria-pressed="true" data-cv="Stock">Stocks</button><button aria-pressed="false" data-cv="ETF">ETFs</button></div>
+          <select id="feat" aria-label="Feature"></select>
+        </div>
+        <div id="curve"></div>
+        <p class="curve-meta" id="curvemeta"></p>
+      </div>
+      <p class="prose">The stable stock effects match known findings from finance research: <strong>short-term reversal</strong> (last week's winners and stocks that closed near the day's high tend to fall back), <strong>a volatility penalty</strong> (more volatile stocks rise less often over five days), and <strong>mild momentum</strong> over three months. A tree-based model, interpreted separately with accumulated local effects (ALE), found the same directions for the main features.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">06</span>Limits of the data itself</h3>
+      <ul class="prose">
+        <li><strong>Survivorship.</strong> 99.7% of tickers trade until the file's last month, which suggests companies that were delisted are missing. That likely flatters the up rate and can bend the volatility and beta curves.</li>
+        <li><strong>Mixed instruments.</strong> The "ETF" group includes leveraged and inverse products. Negative beta mostly identifies inverse funds, which lose value over time. Part of the ETF signal is product structure, not market behaviour.</li>
+        <li><strong>Reused years.</strong> 2013–2015 informed many design choices, and I had looked at 2016–17 in earlier experiments. Nothing here is independent confirmation, and the page says so.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="limits">
+    <h2 data-short="The limit">Why no feature from this data can do much better</h2>
+    <p class="prose muted">The findings above explain why these models were weak. Notebook 16 asks a stronger question: is there a limit for <em>any</em> feature that can be built from daily prices and volume? It uses only the 2013–2015 development years, and the 2016–17 holdout is not touched.</p>
+
+    <div class="finding">
+      <h3><span class="n">A</span>The label is the sign of a very noisy number</h3>
+      <p class="prose">A stock's 5-day return has a standard deviation of 6.1%, but half of all stock labels come from a move smaller than 2%. For those rows, a tiny nudge flips "up" to "down", so the label is close to a coin flip. Sorting rows by the size of the move shows the effect directly:</p>
+      <div class="panel">
+        <div class="controls"><div class="seg" role="group" aria-label="Asset group"><button aria-pressed="true" data-mv="Stock">Stocks</button><button aria-pressed="false" data-mv="ETF">ETFs</button></div><span class="small muted">Timing-removed spline, 2013–2015, rows split into 10 equal groups by |5-day return|</span></div>
+        <div id="movechart"></div>
+      </div>
+      <p class="prose">The model is near 50% on the smallest moves, where noise decides the sign. It is also weak on the largest moves (median 11% for stocks), which come from news that past prices can't contain. It does best in between.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">B</span>Accuracy is tied to correlation by a fixed formula</h3>
+      <p class="prose">If a forecast and a return have correlation ρ, the chance that their signs agree is ½ + arcsin(ρ)/π. This is Sheppard's formula, and it holds on this data: it predicts 51.9% sign agreement from the spline's ρ = 0.060, and the observed value is 51.6%. Near zero, <strong>each 0.01 of correlation buys only about 0.32 points of accuracy.</strong> Drag the slider to see what higher accuracy would need.</p>
+      <div class="panel">
+        <label class="slider" style="display:flex;gap:12px">Correlation ρ <input type="range" id="rho" min="0" max="0.6" step="0.005" value="0.06" style="flex:1"><output id="rhov"></output></label>
+        <div id="sheppard"></div>
+        <div class="power-out">
+          <div class="stat"><div class="v" id="shAcc"></div><div class="l">sign agreement at this ρ</div></div>
+          <div class="stat"><div class="v" id="shR2"></div><div class="l">share of return variance explained (R²)</div></div>
+          <div class="stat"><div class="v" id="shX"></div><div class="l">times the correlation this project actually found (0.060)</div></div>
+        </div>
+      </div>
+      <p class="prose">60% accuracy would need ρ ≈ 0.31, five times what any model here found. That would mean a predictable swing of about 1.8% a week, from price data that every trader can see. A pattern that large and that easy to profit from would not last.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">C</span>What flexible models find beyond a straight line is noise</h3>
+      <p class="prose">To find a ceiling, notebook 16 fitted models <em>on purpose</em> to the same rows they were scored on, then compared that with scores on new dates (2015).</p>
+      <div class="panel">
+        <div class="controls"><div class="seg" role="group" aria-label="Asset group"><button aria-pressed="true" data-cl="Stock">Stocks</button><button aria-pressed="false" data-cl="ETF">ETFs</button></div><span class="small muted">Within-date IC: fitted and scored on the same rows vs scored on new dates</span></div>
+        <div id="ceilchart"></div>
+      </div>
+      <p class="prose">For stocks, the linear model scores the same in both settings (0.051 vs 0.050), so its signal is small but real. Gradient boosting reaches 0.30 on rows it has seen but only 0.018 on new dates: it memorised noise. This is the other reason the trees and the MLP never beat ridge, alongside their bad market-timing calls.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">D</span>The accuracy budget</h3>
+      <div class="panel table-scroll">
+        <table class="results">
+          <thead><tr><th>Source of stock accuracy (2013–2015)</th><th>Accuracy</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Always predict "up"</td><td>51.8%</td><td>Achieved</td></tr>
+            <tr class="best"><td>+ ranking stocks (timing-removed spline)</td><td>53.4%</td><td>Achieved</td></tr>
+            <tr><td>An example goal of 60%</td><td>60%</td><td>Needs ρ ≈ 0.31, 5× what was found</td></tr>
+            <tr><td>Knowing each day's market move in advance</td><td>65.3%</td><td>Not possible: uses the future</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="prose">Together: the label is mostly noise, the large market part has no stable memory, and the small predictable asset part is too weak to flip a noisy sign often. These limits come from the statistics of returns, not from the choice of model or features. It isn't a proof for every possible feature (windows longer than 63 days weren't tested, for example), but any new feature would need about 8 times the strength of the best single feature here to reach 60%.</p>
+    </div>
+  </section>
+
+  <section id="relative">
+    <h2 data-short="Relative target">Follow-up experiment: "beats the market" instead of "goes up"</h2>
+    <div class="prose">
+      <p>Finding 01 suggested an obvious next step: if the market-wide part of the label is unpredictable noise, remove it from the label itself. I retrained the exact same models with one change. The new label asks whether an asset's 5-day return <strong>beat the median asset</strong> that week (same group, same date), so roughly half of all labels are "yes" on every date, whatever the market does. Everything else matched the original holdout run: the same 24 features, the same 200,000-row samples, spline settings chosen on 2015, models frozen before scoring 2016–17, and the same resampling method for uncertainty. I wrote the analysis plan before computing any scores.</p>
+    </div>
+    <div class="panel">
+      <p class="panel-title">Accuracy gain over the no-skill baseline, 2016–17, with 95% intervals</p>
+      <p class="panel-sub">Original label: timing-removed spline vs the base rate. Relative label: spline trained on the new label vs a coin flip.</p>
+      <div id="cichart"></div>
+    </div>
+    <div class="finding">
+      <h3><span class="n">A</span>The same skill becomes clearly measurable</h3>
+      <p class="prose">For stocks, the gain over the baseline was +1.17 points with an interval from −0.30 to +2.65 under the original label, too wide to rule out zero. Under the relative label it's <strong>+1.83 points, with an interval of +1.42 to +2.27</strong>, about 3.5 times narrower and well clear of zero in both years. For ETFs the gain is larger (+3.36 vs +0.67 points) and clear of zero, but the interval is wider (+1.21 to +5.54), because each date has only about 600 ETFs against about 3,400 stocks. The market move wasn't only unpredictable; it was also adding noise to the evaluation.</p>
+    </div>
+    <div class="finding">
+      <h3><span class="n">B</span>But the model didn't get meaningfully better</h3>
+      <p class="prose">Ranking quality, the IC against actual 5-day returns, barely moved: 0.049 → 0.052 for stocks and 0.071 → 0.092 for ETFs. Both differences fall inside their intervals (−0.010 to +0.016 and −0.007 to +0.049). The relative model's stock rankings correlate 0.89 with the original model's. Its year-to-year consistency did improve: the stock IC t-statistic rose from 4.8 to 7.1.</p>
+      <p class="prose">On the original "did it go up?" question, the relative model was slightly <em>worse</em> in log loss (−0.0009, interval −0.0014 to −0.0004) and no better in accuracy. "Beats the median" and "closes higher" are different questions. For example, volatility affects the chance of beating other stocks differently from the chance of rising at all. So a model's probabilities don't transfer from one label to the other.</p>
+    </div>
+    <div class="callout"><strong>What this taught me:</strong> relabelling didn't create new signal. The spline was already ignoring the market part, and removing timing at prediction time (finding 02) does the same job as removing it from the label. What the relative label gives you is a cleaner, better-powered measurement of the skill that actually exists. If the end use is ranking stocks against each other, that's the label to report.</div>
+    <p class="prose small muted">This is development work on the previously reused 2016–17 holdout, with one training seed. It is not independent confirmation. Code and outputs: <code>experiments/market_relative/</code> in the project folder.</p>
+  </section>
+
+  <section>
+    <h2 data-short="Next steps">Status and next steps</h2>
+    <p class="prose">The current recommendation is the timing-removed additive spline: it's in every model confidence set, and every one of its stock curves can be inspected. It is not a trading strategy; accuracy says nothing about returns after costs. To move forward, the project needs:</p>
+    <ul class="prose">
+      <li>A new dataset that includes delisted securities and a record of price adjustments, with a later test period set aside <em>before</em> looking at any results.</li>
+      <li>Liquidity and instrument-type groups defined in advance, instead of one pooled universe.</li>
+      <li>The market-relative label as the main measure of skill, since for stocks it measures the same skill with a roughly 3.5 times narrower interval.</li>
+      <li>If the signal survives, a realistic backtest with overlapping positions, turnover and transaction costs.</li>
+    </ul>
+  </section>
+
+  <nav class="pager" aria-label="More pages"><a href="../traffic-signs/index.html"><span>Previous</span><b>Traffic signs</b></a><a class="next" href="../../process/index.html"><span>Next</span><b>How I work</b></a></nav>
+  <footer>Kyi Wai Thant. Numbers come from the project's saved reports.</footer>
+</main>
+
+<script src="../charts.js"></script>
+<script src="data.js"></script>
+<script>
+(() => {
+  const D = window.DATA;
+  const NAMES = { constant: "Constant baseline", ridge_logistic: "Ridge", elastic_net: "Elastic net", spline_additive: "Additive spline", hist_boost: "Gradient boosting", extra_trees: "Extra trees", deep_mlp: "Deep MLP" };
+  const COL = { constant: "--axis", ridge_logistic: "--s1", elastic_net: "--s1", spline_additive: "--s3", hist_boost: "--s2", extra_trees: "--s2", deep_mlp: "--s5" };
+  const seg = (attr, fn) => document.querySelectorAll(`[${attr}]`).forEach((b) => b.onclick = () => {
+    document.querySelectorAll(`[${attr}]`).forEach((x) => x.setAttribute("aria-pressed", x === b)); fn(b.getAttribute(attr));
+  });
+
+  // 1. dev comparison: gains vs constant
+  function dev(a) {
+    const rows = D.dev.filter((r) => r.a === a), c = rows.find((r) => r.m === "constant");
+    const pts = rows.map((r) => ({ x: (c.ll - r.ll) * 1000, y: (r.acc - c.acc) * 100, m: r.m, r }));
+    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    const pad = (lo, hi) => [Math.floor(lo - 0.6), Math.ceil(hi + 0.6)];
+    const [x0, x1] = pad(Math.min(...xs), Math.max(...xs)), [y0, y1] = pad(Math.min(...ys), Math.max(...ys));
+    Charts.scatter(document.getElementById("devchart"), {
+      height: 320, xMin: x0, xMax: x1, yMin: y0, yMax: y1, xLabel: "Log-loss improvement vs baseline (×1000)", yLabel: "Accuracy gain (pts)",
+      xFmt: (v) => v.toFixed(0), yFmt: (v) => v.toFixed(1),
+      legend: [{ name: "Linear", color: "--s1" }, { name: "Additive spline", color: "--s3" }, { name: "Trees", color: "--s2" }, { name: "Neural net", color: "--s5" }],
+      points: pts.map((p) => ({ x: p.x, y: p.y, r: 6, color: COL[p.m], label: p.m === "ridge_logistic" ? "" : p.m === "elastic_net" ? "Ridge / elastic net" : NAMES[p.m], labelDy: p.m === "elastic_net" ? -8 : p.m === "extra_trees" ? 16 : 4,
+        tip: `<b>${NAMES[p.m]}</b><br>Accuracy ${(p.r.acc * 100).toFixed(2)}% · log loss ${p.r.ll.toFixed(4)}<br>Mean AUC ${p.r.auc.toFixed(3)}` })),
+    });
+  }
+  seg("data-dev", dev); dev("Stock");
+
+  // 2. up fraction over time
+  const toYear = (s) => { const d = new Date(s + "T00:00:00Z"); return d.getUTCFullYear() + (d - Date.UTC(d.getUTCFullYear(), 0, 1)) / 31557600000; };
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmtYear = (v) => { const y = Math.floor(v), m = Math.min(11, Math.floor((v - y) * 12)); return Number.isInteger(v) ? String(v) : MON[m] + " " + y; };
+  function up(a) {
+    const pts = D.upfrac[a].map(([d, f]) => [toYear(d), f]);
+    const roll = pts.map((p, i) => { const s = pts.slice(Math.max(0, i - 59), i + 1); return [p[0], s.reduce((t, q) => t + q[1], 0) / s.length]; });
+    Charts.line(document.getElementById("upchart"), {
+      height: 280, yMin: 0, yMax: 1, yFmt: (v) => Math.round(v * 100) + "%", tipFmt: (v) => (v * 100).toFixed(1) + "%", xFmt: fmtYear, xLabel: "Date",
+      xTicks: [2006, 2008, 2010, 2012, 2014],
+      series: [{ name: "Daily up fraction", color: "--s1", points: pts }, { name: "60-day average", color: "--s2", points: roll }],
+    });
+  }
+  seg("data-up", up); up("Stock");
+
+  // 3. timing vs selection
+  const YC = { 2013: "--s1", 2014: "--s2", 2015: "--s3" };
+  function ts(a) {
+    const rows = D.timing.filter((r) => r.a === a);
+    Charts.scatter(document.getElementById("tschart"), {
+      height: 300, xMin: -0.35, xMax: 0.35, yMin: 0, yMax: 0.14, xTicks: [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3], yTicks: [0, 0.04, 0.08, 0.12],
+      xLabel: "Market-timing correlation", yLabel: "Stock-selection IC", xFmt: (v) => v.toFixed(1), yFmt: (v) => v.toFixed(2),
+      legend: [2013, 2014, 2015].map((y) => ({ name: String(y), color: YC[y] })),
+      points: rows.map((r) => ({ x: r.tc, y: r.ic, r: 5, color: YC[r.y], tip: `<b>${NAMES[r.m]}</b>, ${r.y}<br>IC ${r.ic.toFixed(3)} (t = ${r.t.toFixed(1)})<br>Timing correlation ${r.tc.toFixed(2)}` })),
+    });
+  }
+  seg("data-ts", ts); ts("Stock");
+
+  // 4. power calculator (holdout SE for timing-removed spline vs constant, stocks, 20-session blocks)
+  const SE465 = 0.750525, Z = 2.8;
+  const years = document.getElementById("years");
+  const power = () => {
+    const y = +years.value, n = y * 252, mde = Z * SE465 * Math.sqrt(465 / n);
+    document.getElementById("yearsv").textContent = y.toFixed(1) + " yrs";
+    document.getElementById("mde").textContent = "±" + mde.toFixed(2) + " pts";
+    const d1 = 1.17 >= mde, d2 = 0.3 >= mde;
+    document.getElementById("det1").innerHTML = `<span class="${d1 ? "ok" : "no"}">${d1 ? "Yes" : "No"}</span>`;
+    document.getElementById("det2").innerHTML = `<span class="${d2 ? "ok" : "no"}">${d2 ? "Yes" : "No"}</span>`;
+  };
+  years.oninput = power; power();
+
+  // 5. spline curves
+  const NICE = { return_1: "1-day return", return_5: "5-day return", return_10: "10-day return", return_20: "20-day return", return_63: "3-month return",
+    volatility_5: "5-day volatility", volatility_20: "20-day volatility", volatility_63: "3-month volatility", close_location: "Close location in day's range",
+    range_fraction: "Day's range / price", intraday_return: "Intraday return", overnight_return: "Overnight return", relative_volume_20: "Volume vs 20-day average",
+    volume_cv_20: "Volume variability", distance_ma_20: "Distance from 20-day average", distance_ma_63: "Distance from 63-day average", drawdown_63: "Drawdown from 3-month high",
+    beta_63: "3-month beta", flat_bar_fraction_20: "Share of flat days", zero_volume_fraction_20: "Share of zero-volume days" };
+  let asset = "Stock";
+  const sel = document.getElementById("feat");
+  function fillSel() {
+    const st = D.stability.filter((r) => r.a === asset).sort((p, q) => q.sd - p.sd);
+    sel.innerHTML = st.map((r) => `<option value="${r.f}">${NICE[r.f] || r.f}${r.stable ? "" : " (unstable)"}</option>`).join("");
+  }
+  function drawCurve() {
+    const f = sel.value, C = D.curves[asset][f], host = document.getElementById("curve");
+    const NS = "http://www.w3.org/2000/svg", W = Math.max(300, host.clientWidth || 760), H = 300, m = { t: 12, r: 16, b: 40, l: 54 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const all = Object.values(C).flat(), xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs); let y0 = Math.min(...ys, 0), y1 = Math.max(...ys, 0); const pd = (y1 - y0) * 0.08 || 0.01; y0 -= pd; y1 += pd;
+    const sx = (v) => (v - x0) / (x1 - x0 || 1) * iw, sy = (v) => ih - (v - y0) / (y1 - y0) * ih;
+    const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+    host.innerHTML = ""; host.classList.add("chart");
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, host), g = el("g", { transform: `translate(${m.l},${m.t})` }, svg);
+    const fmt = (v) => Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(1) : v.toFixed(3);
+    for (let i = 0; i <= 4; i++) { const v = y0 + (y1 - y0) * i / 4, y = sy(v); el("line", { x1: 0, x2: iw, y1: y, y2: y, class: "gridline" }, g); el("text", { x: -8, y: y + 4, "text-anchor": "end" }, g).textContent = v.toFixed(2); }
+    for (let i = 0; i <= 4; i++) { const v = x0 + (x1 - x0) * i / 4; el("text", { x: sx(v), y: ih + 18, "text-anchor": "middle" }, g).textContent = fmt(v); }
+    el("line", { x1: 0, x2: iw, y1: sy(0), y2: sy(0), class: "axisline" }, g);
+    el("text", { x: iw / 2, y: ih + 36, "text-anchor": "middle" }, g).textContent = (NICE[f] || f) + " (raw feature value)";
+    const yl = el("text", { x: -40, y: ih / 2, "text-anchor": "middle", transform: `rotate(-90 -40 ${ih / 2})` }, g); yl.textContent = "Effect on log-odds of 'up'";
+    const path = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join("");
+    for (const k in C) if (k !== "holdout_2016") el("path", { d: path(C[k]), fill: "none", stroke: "var(--axis)", "stroke-width": 1, opacity: 0.45 }, g);
+    el("path", { d: path(C.holdout_2016), fill: "none", stroke: "var(--s1)", "stroke-width": 2.5 }, g);
+    const st = D.stability.find((r) => r.a === asset && r.f === f);
+    document.getElementById("curvemeta").innerHTML = `Effect is <strong>${st.dir}</strong> · ranking importance ${st.sd.toFixed(3)} · ` +
+      (st.med != null ? `median agreement with other fits r = ${st.med.toFixed(2)}, same direction in ${Math.round(st.agree * 100)}% of fits · ` : "") +
+      `<strong>${st.stable ? "stable" : "not stable"}</strong>`;
+  }
+  sel.onchange = drawCurve;
+  seg("data-cv", (a) => { asset = a; fillSel(); drawCurve(); });
+  fillSel(); drawCurve();
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawCurve, 150); });
+})();
+</script>
+
+<script>
+(() => {
+  const rows = [
+    { g: "Stocks", lab: "Original label", v: 1.17, lo: -0.30, hi: 2.65, c: "--axis" },
+    { g: "Stocks", lab: "Relative label", v: 1.83, lo: 1.42, hi: 2.27, c: "--s1" },
+    { g: "ETFs", lab: "Original label", v: 0.67, lo: 0.12, hi: 1.19, c: "--axis" },
+    { g: "ETFs", lab: "Relative label", v: 3.36, lo: 1.21, hi: 5.54, c: "--s1" },
+  ];
+  const host = document.getElementById("cichart");
+  const draw = () => {
+    const NS = "http://www.w3.org/2000/svg", W = Math.max(300, host.clientWidth || 700), rowH = 40, m = { t: 10, r: 20, b: 36, l: 150 };
+    const H = m.t + m.b + rows.length * rowH, iw = W - m.l - m.r, x0 = -1, x1 = 6, sx = (v) => m.l + (v - x0) / (x1 - x0) * iw;
+    const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+    host.innerHTML = ""; host.classList.add("chart");
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Accuracy gain intervals" }, host);
+    for (let v = -1; v <= 6; v++) {
+      el("line", { x1: sx(v), x2: sx(v), y1: m.t, y2: H - m.b, class: v === 0 ? "axisline" : "gridline" }, svg);
+      el("text", { x: sx(v), y: H - m.b + 16, "text-anchor": "middle" }, svg).textContent = (v > 0 ? "+" : "") + v;
+    }
+    el("text", { x: m.l + iw / 2, y: H - 4, "text-anchor": "middle" }, svg).textContent = "Accuracy gain over baseline (percentage points)";
+    rows.forEach((r, i) => {
+      const y = m.t + i * rowH + rowH / 2;
+      el("text", { x: 0, y: y + 4, style: "fill:var(--fg);font-size:12px" }, svg).textContent = r.g + " · " + r.lab;
+      el("line", { x1: sx(r.lo), x2: sx(r.hi), y1: y, y2: y, stroke: `var(${r.c})`, "stroke-width": 3, "stroke-linecap": "round" }, svg);
+      el("circle", { cx: sx(r.v), cy: y, r: 6, fill: `var(${r.c})`, stroke: "var(--card)", "stroke-width": 2 }, svg);
+      el("text", { x: sx(r.hi) + 8, y: y + 4, style: "font-size:11px" }, svg).textContent = `${r.v > 0 ? "+" : ""}${r.v.toFixed(2)} [${r.lo.toFixed(2)}, ${r.hi.toFixed(2)}]`;
+    });
+  };
+  draw(); let t; window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(draw, 150); });
+})();
+</script>
+
+<script>
+(() => {
+  const L = {"bySize":[{"a":"Stock","d":0,"m":0.15,"acc":49.76},{"a":"Stock","d":1,"m":0.49,"acc":52.87},{"a":"Stock","d":2,"m":0.86,"acc":54.0},{"a":"Stock","d":3,"m":1.29,"acc":54.37},{"a":"Stock","d":4,"m":1.79,"acc":54.66},{"a":"Stock","d":5,"m":2.41,"acc":54.33},{"a":"Stock","d":6,"m":3.21,"acc":54.16},{"a":"Stock","d":7,"m":4.32,"acc":53.96},{"a":"Stock","d":8,"m":6.17,"acc":53.57},{"a":"Stock","d":9,"m":11.1,"acc":51.79},{"a":"ETF","d":0,"m":0.07,"acc":47.63},{"a":"ETF","d":1,"m":0.25,"acc":54.32},{"a":"ETF","d":2,"m":0.47,"acc":55.15},{"a":"ETF","d":3,"m":0.74,"acc":55.99},{"a":"ETF","d":4,"m":1.05,"acc":57.03},{"a":"ETF","d":5,"m":1.43,"acc":58.3},{"a":"ETF","d":6,"m":1.9,"acc":57.32},{"a":"ETF","d":7,"m":2.54,"acc":55.65},{"a":"ETF","d":8,"m":3.57,"acc":53.4},{"a":"ETF","d":9,"m":6.54,"acc":49.86}],"ceiling":[{"a":"Stock","m":"Linear (ridge)","f":"in","ic":0.051},{"a":"Stock","m":"Linear (ridge)","f":"out","ic":0.05},{"a":"Stock","m":"Additive spline","f":"in","ic":0.057},{"a":"Stock","m":"Additive spline","f":"out","ic":0.019},{"a":"Stock","m":"Gradient boosting (interactions)","f":"in","ic":0.303},{"a":"Stock","m":"Gradient boosting (interactions)","f":"out","ic":0.018},{"a":"ETF","m":"Linear (ridge)","f":"in","ic":0.079},{"a":"ETF","m":"Linear (ridge)","f":"out","ic":0.04},{"a":"ETF","m":"Additive spline","f":"in","ic":0.121},{"a":"ETF","m":"Additive spline","f":"out","ic":0.045},{"a":"ETF","m":"Gradient boosting (interactions)","f":"in","ic":0.379},{"a":"ETF","m":"Gradient boosting (interactions)","f":"out","ic":0.06}],"spy":[{"p":"2005-2009","ac":-0.104,"r2":1.08,"vr":0.74,"z":-1.9},{"p":"2010-2012","ac":-0.064,"r2":0.41,"vr":0.91,"z":-0.7},{"p":"2013-2015","ac":0.014,"r2":0.02,"vr":0.92,"z":-0.7}]};
+  const seg = (attr, fn) => document.querySelectorAll(`[${attr}]`).forEach((b) => b.onclick = () => {
+    document.querySelectorAll(`[${attr}]`).forEach((x) => x.setAttribute("aria-pressed", x === b)); fn(b.getAttribute(attr)); });
+  // A. accuracy by move size
+  const move = (a) => {
+    const rows = L.bySize.filter((r) => r.a === a);
+    Charts.line(document.getElementById("movechart"), {
+      height: 260, yMin: 46, yMax: 60, yFmt: (v) => v + "%", tipFmt: (v) => v.toFixed(1) + "%",
+      xLabel: "Size of 5-day move (median |return| of each group)", xTicks: rows.map((r) => r.d), xFmt: (i) => { const r = rows[Math.round(i)]; return r ? r.m.toFixed(r.m < 1 ? 2 : 1) + "%" : ""; },
+      series: [{ name: "Direction accuracy", color: "--s1", points: rows.map((r) => [r.d, r.acc]) }],
+    });
+  };
+  seg("data-mv", move); move("Stock");
+  // B. Sheppard slider
+  const rho = document.getElementById("rho"), host = document.getElementById("sheppard");
+  const acc = (r) => 0.5 + Math.asin(r) / Math.PI;
+  const drawSh = () => {
+    const r = +rho.value, NS = "http://www.w3.org/2000/svg", W = Math.max(300, host.clientWidth || 700), H = 230, m = { t: 12, r: 16, b: 38, l: 50 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const sx = (v) => m.l + v / 0.6 * iw, sy = (v) => m.t + ih - (v - 0.5) / 0.22 * ih;
+    const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+    host.innerHTML = ""; host.classList.add("chart");
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, host);
+    for (const v of [0.5, 0.55, 0.6, 0.65, 0.7]) { el("line", { x1: m.l, x2: m.l + iw, y1: sy(v), y2: sy(v), class: "gridline" }, svg); el("text", { x: m.l - 8, y: sy(v) + 4, "text-anchor": "end" }, svg).textContent = Math.round(v * 100) + "%"; }
+    for (const v of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) el("text", { x: sx(v), y: H - m.b + 16, "text-anchor": "middle" }, svg).textContent = v.toFixed(1);
+    el("text", { x: m.l + iw / 2, y: H - 4, "text-anchor": "middle" }, svg).textContent = "Correlation between forecast and return (ρ)";
+    let d = ""; for (let i = 0; i <= 120; i++) { const v = i / 200; d += (i ? "L" : "M") + sx(v).toFixed(1) + "," + sy(acc(v)).toFixed(1); }
+    el("path", { d, fill: "none", stroke: "var(--s1)", "stroke-width": 2 }, svg);
+    const mark = (v, label, color) => { el("line", { x1: sx(v), x2: sx(v), y1: m.t, y2: m.t + ih, stroke: `var(${color})`, "stroke-dasharray": "4 3" }, svg); el("text", { x: sx(v) + 4, y: m.t + 12, style: `fill:var(${color});font-size:11px` }, svg).textContent = label; };
+    mark(0.06, "this project", "--s3"); mark(0.309, "60% needs", "--s2");
+    el("circle", { cx: sx(r), cy: sy(acc(r)), r: 6, fill: "var(--s1)", stroke: "var(--card)", "stroke-width": 2 }, svg);
+    document.getElementById("rhov").textContent = r.toFixed(3);
+    document.getElementById("shAcc").textContent = (acc(r) * 100).toFixed(1) + "%";
+    document.getElementById("shR2").textContent = (r * r * 100).toFixed(r < 0.1 ? 2 : 1) + "%";
+    document.getElementById("shX").textContent = (r / 0.06).toFixed(1) + "×";
+  };
+  rho.oninput = drawSh; drawSh(); let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawSh, 150); });
+  // C. in-sample vs out-of-sample ceiling (grouped bars)
+  const ceil = (a) => {
+    const rows = L.ceiling.filter((r) => r.a === a), models = [...new Set(rows.map((r) => r.m))];
+    const h = document.getElementById("ceilchart"), NS = "http://www.w3.org/2000/svg", W = Math.max(300, h.clientWidth || 700), H = 260, m = { t: 30, r: 10, b: 40, l: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const el = (t, at, p) => { const e = document.createElementNS(NS, t); for (const k in at) e.setAttribute(k, at[k]); p.appendChild(e); return e; };
+    const ymax = 0.4, sy = (v) => m.t + ih - v / ymax * ih;
+    h.innerHTML = ""; h.classList.add("chart");
+    const lg = document.createElement("div"); lg.className = "legend";
+    lg.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span class="sw dot" style="background:var(--s2)"></span>Same rows (in-sample)</span><span style="display:inline-flex;align-items:center;gap:6px"><span class="sw dot" style="background:var(--s1)"></span>New dates (2015)</span>';
+    h.appendChild(lg);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, h);
+    for (const v of [0, 0.1, 0.2, 0.3, 0.4]) { el("line", { x1: m.l, x2: m.l + iw, y1: sy(v), y2: sy(v), class: v ? "gridline" : "axisline" }, svg); el("text", { x: m.l - 8, y: sy(v) + 4, "text-anchor": "end" }, svg).textContent = v.toFixed(1); }
+    el("line", { x1: m.l, x2: m.l + iw, y1: sy(0.309), y2: sy(0.309), stroke: "var(--s2)", "stroke-dasharray": "5 4" }, svg);
+    el("text", { x: m.l + 4, y: sy(0.309) - 6, "text-anchor": "start", style: "fill:var(--s2);font-size:11px" }, svg).textContent = "needed for 60% (ρ ≈ 0.31)";
+    const gw = iw / models.length, bw = Math.min(56, gw * 0.3);
+    models.forEach((mo, i) => {
+      const cx = m.l + gw * (i + 0.5);
+      [["in", "--s2", -1], ["out", "--s1", 1]].forEach(([f, c, side]) => {
+        const v = rows.find((r) => r.m === mo && r.f === f).ic, x = cx + (side < 0 ? -bw - 1 : 1);
+        el("rect", { x, y: sy(v), width: bw, height: sy(0) - sy(v), rx: 3, fill: `var(${c})` }, svg);
+        el("text", { x: x + bw / 2, y: sy(v) - 5, "text-anchor": "middle", style: "fill:var(--fg);font-size:11px" }, svg).textContent = v.toFixed(3);
+      });
+      el("text", { x: cx, y: H - m.b + 18, "text-anchor": "middle", style: "fill:var(--fg);font-size:12px" }, svg).textContent = mo.replace(" (interactions)", "");
+    });
+  };
+  seg("data-cl", ceil); ceil("Stock");
+})();
+</script>
+</body>
+</html>

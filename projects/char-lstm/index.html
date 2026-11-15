@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next-character prediction · Kyi Wai Thant</title>
+<meta name="description" content="A character-level LSTM and transformer trained on text8, with a live in-browser demo.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%2315223d%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2712%27 fill=%27%23eaa417%27/%3E%3C/svg%3E">
+<meta property="og:title" content="Next-character prediction · Kyi Wai Thant">
+<meta property="og:description" content="A character-level LSTM and transformer trained on text8, with a live in-browser demo.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#15223d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../site.css">
+<script src="../../site.js"></script>
+<style>
+  .demo-grid { display: grid; grid-template-columns: 1fr 220px; gap: 20px; }
+  @media (max-width: 720px) { .demo-grid { grid-template-columns: 1fr; } }
+  textarea { width: 100%; min-height: 84px; resize: vertical; font: 15px/1.6 var(--mono); padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+  textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .heat { font: 15px/2 var(--mono); word-break: break-all; min-height: 2em; margin-top: 14px; position: relative; }
+  .heat span { padding: 2px 0; border-radius: 3px; cursor: default; }
+  .heat .sp { display: inline-block; width: .6em; }
+  .heat .gen { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 4px; }
+  .next h3 { font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 10px; }
+  .bar-row { display: grid; grid-template-columns: 34px 1fr 46px; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 13px; }
+  .bar-row .ch { font-family: var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; text-align: center; padding: 1px 0; }
+  .bar-row .track { height: 10px; background: var(--grid); border-radius: 0 4px 4px 0; overflow: hidden; }
+  .bar-row .fill { height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; transition: width .15s; }
+  .bar-row .pct { font-family: var(--mono); text-align: right; color: var(--muted); }
+  .loading { font-size: 14px; color: var(--muted); }
+  .progress { height: 4px; background: var(--grid); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+  .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .chart-pair { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; }
+  @media (max-width: 720px) { .chart-pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-toc>
+<header class="nav"><div class="wrap nav-in">
+  <a class="brand" href="../../index.html">Kyi Wai Thant</a>
+  <nav aria-label="Site">
+    <a href="../../index.html#projects" aria-current="page">Projects</a>
+    <a href="../../process/index.html">How I work</a>
+    <a href="../../index.html#about">About</a>
+    <a href="../../index.html#contact">Contact</a>
+  </nav>
+</div></header>
+
+<main class="wrap article">
+  <div class="hero prose">
+    <p class="eyebrow">JAX / Flax, Team project</p>
+    <h1>Predicting text one character at a time</h1>
+    <p class="lede">Two language models (an LSTM and a decoder-only transformer) written from scratch in JAX/Flax and trained on 90 million characters of Wikipedia. Then the question: does attention actually beat recurrence at this scale? A visit to the MIT Museum later sent me back to compare everything against <a href="#shannon">Claude Shannon's 1951 experiments</a> on the same problem.</p>
+    <p class="meta-line">Code: <a href="https://github.com/54f3fy/Character-Prediction">github.com/54f3fy/Character-Prediction</a></p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v">67.94%</div><div class="l">Transformer test accuracy (next character)</div></div>
+    <div class="stat"><div class="v">66.38%</div><div class="l">LSTM test accuracy</div></div>
+    <div class="stat"><div class="v">2.79</div><div class="l">Transformer perplexity (LSTM: 2.92)</div></div>
+    <div class="stat"><div class="v">5M</div><div class="l">held-out test characters, every position scored</div></div>
+  </div>
+
+  <aside class="inshort"><strong class="t">In short</strong><ul><li>The transformer predicts the next character correctly 67.94% of the time. The LSTM reaches 66.38% with almost twice the parameters.</li><li>Most errors happen at the first letter of a word, where the model has to guess the word itself.</li><li>With a few letters of context, the LSTM guesses as well as the people in Claude Shannon's 1951 experiment. With 99 letters, people are well ahead.</li><li>You can <a href="#demo-sec">type into the trained model</a> and <a href="#game">play the guessing game against it</a> on this page.</li></ul></aside>
+
+  <section id="demo-sec">
+    <h2>Try the model</h2>
+    <p class="prose muted">This is the trained LSTM running in your browser: no server, about 9&nbsp;MB of weights compressed to 8-bit. Type anything. Each character is shaded by how <em>surprised</em> the model was to see it; hover a character to see what it expected instead.</p>
+    <div class="panel">
+      <div id="loader" class="loading">Loading model weights… <span id="loadpct">0%</span><div class="progress"><div id="loadbar"></div></div></div>
+      <div id="demo" hidden>
+        <div class="demo-grid">
+          <div>
+            <textarea id="input" spellcheck="false" maxlength="400" aria-label="Text for the model to read">machine learning is the study of algorithms that improve automatically through experience</textarea>
+            <div class="hint">Lowercase letters and spaces only, like the text8 training data. Other characters are dropped.</div>
+            <div class="heat" id="heat" aria-live="polite"></div>
+            <div class="scale">Surprise:
+              <i class="b0"></i>&lt;0.5 bits <i class="b1"></i>&lt;1 <i class="b2"></i>&lt;2 <i class="b3"></i>&lt;3 <i class="b4"></i>&lt;5 <i class="b5"></i>5+ bits
+            </div>
+          </div>
+          <div class="next">
+            <h3>Most likely next character</h3>
+            <div id="bars"></div>
+          </div>
+        </div>
+        <div class="controls" style="margin-top:18px;margin-bottom:0">
+          <button class="btn primary" id="gen">Let it continue</button>
+          <button class="btn" id="stop" disabled>Stop</button>
+          <label class="slider">Temperature <input type="range" id="temp" min="0.1" max="1.5" step="0.05" value="0.6"><output id="tempv">0.60</output></label>
+          <span class="small muted">Low = safe and repetitive · high = creative and chaotic</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-short="Comparison">How they compare</h2>
+    <div class="prose">
+      <p>Both models see a window of characters and predict the next one. Cross-entropy loss here is measured in nats per character; dividing by ln&nbsp;2 gives <strong>bits per character</strong>: about <strong>1.48</strong> for the transformer and <strong>1.55</strong> for the LSTM. Perplexity (e<sup>loss</sup>) reads as "the model is about as unsure as choosing among ~2.8 equally likely characters".</p>
+    </div>
+    <div class="panel table-scroll">
+      <table class="results">
+        <thead><tr><th>Model</th><th>Architecture</th><th>Context</th><th>Test loss</th><th>Perplexity</th><th>Accuracy</th></tr></thead>
+        <tbody>
+          <tr class="best"><td>Transformer</td><td>6 layers · d=256 · 4 heads · pre-LayerNorm</td><td>192 chars</td><td>1.028</td><td>2.79</td><td>67.94%</td></tr>
+          <tr><td>LSTM</td><td>4 layers · 512 hidden · residual + LayerNorm</td><td>128 chars</td><td>1.072</td><td>2.92</td><td>66.38%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Training</h2>
+    <div class="chart-pair">
+      <div class="panel">
+        <p class="panel-title">Transformer: loss over 75,000 steps</p>
+        <p class="panel-sub">Warmup then cosine decay to zero. Each validation point is a single batch of 64, hence the noise.</p>
+        <div id="tfcurve"></div>
+      </div>
+      <div class="panel">
+        <p class="panel-title">LSTM: loss per epoch</p>
+        <p class="panel-sub">10 epochs; validation loss was still falling when training ended.</p>
+        <div id="lstmcurve"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-short="Tuning">Tuning with Bayesian optimisation</h2>
+    <div class="prose">
+      <p>Instead of grid search, hyperparameters were tuned with Optuna's Tree-structured Parzen Estimator, which models which settings tend to produce good losses and samples there next. For the transformer, a successive-halving pruner killed weak trials early: <strong>57 of 75</strong> were stopped after a few hundred steps, so the compute went to the promising configurations.</p>
+    </div>
+    <div class="panel">
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Model">
+          <button aria-pressed="true" data-bo="tf">Transformer</button>
+          <button aria-pressed="false" data-bo="lstm">LSTM</button>
+        </div>
+        <span class="small muted" id="bonote"></span>
+      </div>
+      <div id="bo"></div>
+    </div>
+  </section>
+
+  <section id="why">
+    <h2 data-short="Why these results">Why we got these results</h2>
+    <p class="prose muted">After the project I went back and asked what the numbers actually say about the data. Text8 itself couldn't be downloaded here, so the breakdowns below run the trained LSTM on public-domain books cleaned into the same 27-character format. Absolute accuracy is lower on that text (59.8%) because it isn't Wikipedia, but the patterns are what matter.</p>
+
+    <div class="finding">
+      <h3><span class="n">01</span>Most of the uncertainty is about which word comes next</h3>
+      <p class="prose">Language is not equally predictable everywhere. Once a word has started, the remaining letters are heavily constrained by spelling. The space that ends a word is right 92% of the time. The first letter of a new word is a genuine choice among thousands of possible words, and the model gets it right only 21% of the time. First letters are 19% of all characters but cause <strong>39% of the total loss</strong>, and the first two letters together cause 60%.</p>
+      <div class="panel">
+        <p class="panel-title">LSTM accuracy by position within a word</p>
+        <p class="panel-sub">Right column: average surprise in bits (lower = more predictable)</p>
+        <div class="barlist"><span>First letter</span><div class="track"><div class="fill" style="width:20.8%"></div></div><span class="num">21%</span><span class="num muted">3.86 bits</span><span>2nd letter</span><div class="track"><div class="fill" style="width:48.5%"></div></div><span class="num">48%</span><span class="num muted">2.14 bits</span><span>3rd letter</span><div class="track"><div class="fill" style="width:54.5%"></div></div><span class="num">55%</span><span class="num muted">2.03 bits</span><span>4th letter</span><div class="track"><div class="fill" style="width:65.1%"></div></div><span class="num">65%</span><span class="num muted">1.57 bits</span><span>5th letter</span><div class="track"><div class="fill" style="width:73.3%"></div></div><span class="num">73%</span><span class="num muted">1.25 bits</span><span>6th letter +</span><div class="track"><div class="fill" style="width:81.8%"></div></div><span class="num">82%</span><span class="num muted">0.84 bits</span><span>Space (word ends)</span><div class="track"><div class="fill" style="width:91.9%"></div></div><span class="num">92%</span><span class="num muted">0.43 bits</span></div>
+      </div>
+      <p class="prose">So a ~68% ceiling isn't a sign the models are weak. Roughly one character in five is a word-start, where even a strong model has to guess. Improving further means modelling meaning (which word fits here), not spelling.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">02</span>Most of the useful context is the last few words</h3>
+      <p class="prose">I measured accuracy against how much text the LSTM had seen so far, and compared it with simple n-gram models (count tables of what follows each short sequence of characters). Accuracy climbs fast through the first 16 characters, about three words, then nearly flattens: everything from character 17 out to 512 adds only about one more percentage point.</p>
+      <div class="panel">
+        <p class="panel-title">Accuracy vs context available</p>
+        <p class="panel-sub">Blue: the LSTM. Orange: n-gram count models fitted on other books.</p>
+        <div class="barlist"><span>1–4 chars</span><div class="track"><div class="fill" style="width:44.0%"></div></div><span class="num">44%</span><span class="num muted">2.80 bits</span><span>5–16 chars</span><div class="track"><div class="fill" style="width:57.2%"></div></div><span class="num">57%</span><span class="num muted">1.93 bits</span><span>17–64 chars</span><div class="track"><div class="fill" style="width:59.1%"></div></div><span class="num">59%</span><span class="num muted">1.89 bits</span><span>65–128 chars</span><div class="track"><div class="fill" style="width:59.7%"></div></div><span class="num">60%</span><span class="num muted">1.83 bits</span><span>129–512 chars</span><div class="track"><div class="fill" style="width:60.1%"></div></div><span class="num">60%</span><span class="num muted">1.83 bits</span><span>No context</span><div class="track"><div class="fill alt" style="width:18.8%"></div></div><span class="num">19%</span><span class="num muted">4.09 bits</span><span>1 char</span><div class="track"><div class="fill alt" style="width:28.1%"></div></div><span class="num">28%</span><span class="num muted">3.35 bits</span><span>2 chars</span><div class="track"><div class="fill alt" style="width:38.6%"></div></div><span class="num">39%</span><span class="num muted">2.79 bits</span><span>4 chars</span><div class="track"><div class="fill alt" style="width:52.9%"></div></div><span class="num">53%</span><span class="num muted">2.12 bits</span></div>
+      </div>
+      <p class="prose">This is why the transformer's advantage is small. Attention is strongest at retrieving long-range information, but at character level on encyclopedic text there is little long-range signal left once you know the current word and the one before it. An LSTM's recurrent state carries that short window well.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">03</span>Both models were limited by size, not by overfitting</h3>
+      <p class="prose">With 78.75M training characters and only 4.8M (transformer) or 9.0M (LSTM) parameters, there is far more data than capacity. The transformer saw each character about 12 times and the LSTM 10 times. The curves above confirm it: the transformer's final train and validation losses are 1.005 vs 1.006, and the LSTM's validation loss was still falling at epoch 10. That's also why Bayesian optimisation picked almost no dropout (0.3% and 2.8%): regularisation doesn't help a model that isn't overfitting.</p>
+      <div class="callout"><strong>Implication:</strong> the next gains would come from a bigger model or longer training, not from tuning. Also worth noting: the transformer beat an LSTM with nearly twice its parameters.</div>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">04</span>How much of the 1.56-point gap is real?</h3>
+      <p class="prose">With 5M test characters, random sampling noise in each accuracy is tiny (hundredths of a percentage point). The bigger caveats are elsewhere:</p>
+      <ul class="prose">
+        <li><strong>Different evaluation windows.</strong> The transformer was scored over 192-character windows and the LSTM over 128, so on average the transformer had more context. On the book text, re-scoring the LSTM with 192-character windows raises its accuracy by about 0.5 points, so roughly a third of the gap could be the protocol, not the architecture.</li>
+        <li><strong>One training run each.</strong> Without repeating training with different random seeds, we don't know how much the results vary from run to run.</li>
+        <li><strong>Short tuning runs.</strong> Tuning ranked settings after only 800 steps, which favours settings that learn fast early (high learning rate, little dropout). That happened to suit this data-rich problem but could pick the wrong settings in a smaller one.</li>
+      </ul>
+      <p class="prose">Fair conclusion: the transformer is modestly better and clearly more parameter-efficient, but the honest margin is closer to 1 point than 1.5.</p>
+    </div>
+  </section>
+
+  <section id="shannon">
+    <h2 data-short="Shannon, 1951">Connecting to Shannon (1951)</h2>
+    <div class="prose">
+      <p><em>How this section came about.</em> In 2026 I visited the MIT Museum and ended up spending most of my time with Claude Shannon's work. The piece that stopped me was <strong>Theseus</strong>, a mechanical mouse he built in 1950 that finds its way through a maze. The "brain" is a bank of telephone relays under the floor that remembers the route, so on its second run the mouse goes straight to the goal. It's one of the earliest machines that learned. From there I went down the rabbit hole of his information theory, and then came across a later paper of his that felt eerily familiar: he had spent 1951 asking how well the next letter of English can be predicted from the letters before it. That is the exact task my teammates and I had trained neural networks on. So I went back to our results to see how they measure up against his.</p>
+      <p>In <a href="https://www.nokia.com/bell-labs/publications-and-media/publications/prediction-and-entropy-of-printed-english/">"Prediction and Entropy of Printed English"</a>, Claude Shannon asked how predictable English is, one letter at a time. His setup is remarkably close to this project. He reduced English to the <strong>same 27 symbols as text8</strong> (26 letters plus space), and his "guessing game" asked people to predict the next letter after seeing the previous ones. The fraction of first guesses that were right is exactly what our models' accuracy measures, and his entropy estimates are in the same unit as our loss: bits per character.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">01</span>Counting gets you to about 3 bits; context gets you much further</h3>
+      <p class="prose">Shannon first estimated entropy from letter-frequency tables (n-grams). I fitted the same kind of count models on public-domain books and, 75 years later, got almost identical numbers for the first two. Neural models then go far below what counting alone can reach.</p>
+      <div class="panel table-scroll">
+        <table class="results">
+          <thead><tr><th>Predictor</th><th>Context it uses</th><th>Shannon (1951)</th><th>This project</th></tr></thead>
+          <tbody>
+            <tr><td>Uniform guess</td><td>none</td><td>4.76 bits</td><td>4.76 bits</td></tr>
+            <tr><td>Letter frequencies (F₁)</td><td>none</td><td>4.03</td><td>4.09</td></tr>
+            <tr><td>Digrams (F₂)</td><td>1 letter</td><td>3.32</td><td>3.35</td></tr>
+            <tr><td>Trigrams (F₃)</td><td>2 letters</td><td>3.1</td><td>2.79</td></tr>
+            <tr><td>Word frequencies</td><td>whole words, no context</td><td>2.14</td><td>–</td></tr>
+            <tr><td>LSTM on text8</td><td>up to 128 letters</td><td>–</td><td>1.55</td></tr>
+            <tr><td>Transformer on text8</td><td>up to 192 letters</td><td>–</td><td>1.48</td></tr>
+            <tr class="best"><td>Human subjects</td><td>100 letters</td><td>0.6–1.3</td><td>–</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="prose">Shannon concluded that English carries roughly one bit per letter, about 75% redundancy. The transformer's 1.48 bits implies at least 69% redundancy in text8. A model's cross-entropy can only overestimate the true entropy, so the remaining gap to Shannon's human estimate is how much the models still miss.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">02</span>Re-running the guessing game with the LSTM</h3>
+      <p class="prose">I repeated Shannon's experiment with the trained LSTM in his place: pick a random point in a book, show it 0, 1, 2 … 14 or 99 letters, and check whether its top guess for the next letter is right. I used 2,000 samples per setting, where Shannon had 100. The text is literary, like his source (a biography of Thomas Jefferson).</p>
+      <div class="panel">
+        <p class="panel-title">First guess correct, by letters known</p>
+        <p class="panel-sub">Shannon's human subjects vs the trained LSTM. The point at 0 letters known is the letter-frequency count model, since the LSTM needs at least one letter. The last point is 99 letters known (axis shortened).</p>
+        <div id="shannonchart"></div>
+      </div>
+      <p class="prose">With up to about four letters known, the LSTM matches people almost exactly: 28% vs 29% with one letter known, 37% vs 36% with two. That part of prediction is spelling statistics, and the model has learned them as well as a person consults them. With long context, people pull far ahead (80% vs 59%), because they use meaning: what the sentence is about and where it's going. Shannon found that errors happen most often at "the beginning of words and syllables". That is exactly the pattern in finding 01 above, where first letters cause 39% of the model's loss.</p>
+    </div>
+
+    <div class="panel" id="game">
+      <p class="panel-title">Play Shannon's game against the model</p>
+      <p class="panel-sub">Guess the next letter of a hidden sentence, and keep guessing until you are right. The model plays the same letters. Each tile shows your number of guesses, then the model's.</p>
+      <p id="game-wait" class="small muted">The game starts when the model has loaded.</p>
+      <div id="game-ui" tabindex="0" hidden>
+        <p class="game-text" id="game-text"></p>
+        <div class="keys" id="game-keys"></div>
+        <div class="tiles" id="game-tiles"></div>
+        <div class="score" id="game-score"></div>
+        <div class="controls" style="margin:14px 0 0"><button class="btn sm" id="game-new" type="button">New sentence</button><span class="small muted" id="game-note"></span></div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">03</span>Shannon's bounds hold, and they're wide</h3>
+      <p class="prose">Shannon couldn't read a person's probabilities, only the order of their guesses. From how often the right answer was the 1st, 2nd, 3rd… guess, he derived an upper and a lower bound on the entropy. A model lets us test that method, because we know its true value. With 99 letters known, the LSTM's guess ranks give bounds of <strong>1.35–2.35 bits</strong>, and its actual cross-entropy, <strong>1.92</strong>, falls inside. The method works, but the interval is a full bit wide, so his 0.6–1.3 range is a loose bracket, not a measurement.</p>
+      <p class="prose">Sample size matters too. With 100 samples per column, each of Shannon's percentages carries about ±5 points of sampling error, which explains why his table is bumpy: 72% correct with 13 letters known, but 60% with 14. With 2,000 samples, the LSTM's curve is smooth (±1 point).</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">04</span>The three model families, through Shannon's lens</h3>
+      <ul class="prose">
+        <li><strong>N-gram count models</strong> are Shannon's F<sub>N</sub>, built literally. They need a table entry for every context, which is why he could only go to 3 letters. The number of possible contexts grows 27-fold with each extra letter.</li>
+        <li><strong>The LSTM</strong> squeezes the entire history into a fixed-size memory. In principle it has unbounded context, but in practice it uses mostly the last few words (see the context chart above).</li>
+        <li><strong>The transformer</strong> looks back directly at all 192 previous letters and learns which ones matter, a learned, shared-parameter version of a very long N-gram. This is the closest of the three to Shannon's human predictor, who could take in all 100 letters at once.</li>
+      </ul>
+      <p class="prose">Shannon also observed that a perfect predictor is a perfect compressor: you only need to transmit where the right answer ranks in its guesses. The same holds for our models. Paired with arithmetic coding, a technique that turns probabilities into a compressed bit stream, the transformer would store text8 at about 1.48 bits per character, under a fifth of plain 8-bit text.</p>
+    </div>
+  </section>
+
+  <nav class="pager" aria-label="More pages"><a href="../../index.html#projects"><span>Previous</span><b>All projects</b></a><a class="next" href="../traffic-signs/index.html"><span>Next</span><b>Traffic signs</b></a></nav>
+  <footer>Kyi Wai Thant. Numbers come straight from the project notebooks.</footer>
+</main>
+
+<script src="../charts.js"></script>
+<script src="data.js"></script>
+<script src="lstm.js"></script>
+<script>
+(() => {
+  const D = window.DATA;
+  const f2 = (v) => v.toFixed(2), f3 = (v) => v.toFixed(3);
+
+  // ---------- charts ----------
+  Charts.line(document.getElementById("tfcurve"), {
+    height: 280, xLabel: "Training step", yLabel: "Loss (nats/char)",
+    xFmt: (v) => v >= 1000 ? (v / 1000) + "k" : v, yFmt: f2, tipFmt: f3,
+    series: [
+      { name: "Train", color: "--s1", points: D.tf.map((r) => [r[0], r[1]]) },
+      { name: "Validation", color: "--s2", points: D.tf.map((r) => [r[0], r[2]]) },
+    ],
+  });
+  Charts.line(document.getElementById("lstmcurve"), {
+    height: 280, width: 460, xLabel: "Epoch", yLabel: "Loss (nats/char)", yFmt: f2, tipFmt: f3,
+    xTicks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    series: [
+      { name: "Train", color: "--s1", points: D.lstm.train.map((v, i) => [i + 1, v]) },
+      { name: "Validation", color: "--s2", points: D.lstm.val.map((v, i) => [i + 1, v]) },
+    ],
+  });
+
+  function drawBO(which) {
+    const bo = which === "tf" ? D.tfBO : D.lstmBO;
+    let best = Infinity; const path = [];
+    for (const [t, v] of bo.trials) { best = Math.min(best, v); path.push([t, best]); }
+    const fmtP = (p) => Object.entries(p).map(([k, v]) => `${k}: ${typeof v === "number" && !Number.isInteger(v) ? v.toPrecision(3) : v}`).join("<br>");
+    const vals = bo.trials.map((t) => t[1]);
+    Charts.scatter(document.getElementById("bo"), {
+      height: 300, xLabel: "Trial number", yLabel: "Validation loss (short run)", yFmt: f2,
+      xMin: 0, xMax: bo.n, yMin: Math.floor(Math.min(...vals) * 10) / 10, yMax: Math.ceil(Math.max(...vals) * 10) / 10,
+      legend: [{ name: "Completed trial", color: "--s1" }, { name: "Best so far", color: "--s2" }],
+      path: { color: "--s2", points: path.concat([[bo.n, best]]) },
+      points: bo.trials.map(([t, v, p]) => ({ x: t, y: v, r: 4, color: "--s1", tip: `<b>Trial ${t}</b>: loss ${v.toFixed(3)}<div class="muted small">${fmtP(p)}</div>` })),
+    });
+    document.getElementById("bonote").textContent = which === "tf"
+      ? `${bo.n} trials · ${bo.pruned} pruned early · best loss ${best.toFixed(3)} after 800 steps`
+      : `${bo.n} trials · best loss ${best.toFixed(3)} on a short tuning run`;
+  }
+  document.querySelectorAll("[data-bo]").forEach((b) => b.onclick = () => {
+    document.querySelectorAll("[data-bo]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    drawBO(b.dataset.bo);
+  });
+  drawBO("tf");
+
+  // ---------- live model ----------
+  const { CharLSTM, softmax, CHARS } = window.CharLSTMLib;
+  const input = document.getElementById("input"), heat = document.getElementById("heat"), bars = document.getElementById("bars");
+  const tip = Charts.makeTip(heat);
+  let model, cache = [], text = "", genText = "", busy = null, generating = false;
+
+  // Weights: binary file where the host serves it (GitHub Pages), otherwise a base64 script fallback.
+  function loadScriptFallback() {
+    return new Promise((resolve, reject) => {
+      document.getElementById("loadpct").textContent = "";
+      document.getElementById("loadbar").style.width = "60%";
+      const s = document.createElement("script"); s.src = "lstm-weights.js";
+      s.onload = () => {
+        const bin = atob(window.LSTM_WEIGHTS_B64); const u = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        delete window.LSTM_WEIGHTS_B64; resolve(u.buffer);
+      };
+      s.onerror = () => reject(new Error("weights unavailable")); document.head.appendChild(s);
+    });
+  }
+  async function load() {
+    let res = null;
+    try { res = await fetch("lstm.bin"); } catch (e) {}
+    if (!res || !res.ok) { model = new CharLSTM(await loadScriptFallback()); return ready(); }
+    const total = +res.headers.get("content-length") || 9201772;
+    const reader = res.body.getReader(); const chunks = []; let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read(); if (done) break;
+      chunks.push(value); got += value.length;
+      const pct = Math.min(100, Math.round(got / total * 100));
+      document.getElementById("loadpct").textContent = pct + "%";
+      document.getElementById("loadbar").style.width = pct + "%";
+    }
+    const buf = new Uint8Array(got); let o = 0; for (const c of chunks) { buf.set(c, o); o += c.length; }
+    model = new CharLSTM(buf.buffer); ready();
+  }
+  function ready() {
+    document.getElementById("loader").hidden = true; document.getElementById("demo").hidden = false;
+    update();    try { initGame(); } catch (e) { console.error(e); }
+  }
+
+  const clean = (s) => s.toLowerCase().replace(/[^a-z ]+/g, "").replace(/ {2,}/g, " ");
+  // cache[i] = { state after i chars, probs: distribution over char i (given chars < i) }
+  function update() {
+    const full = clean(input.value) + genText;
+    let k = 0; while (k < full.length && k < text.length && full[k] === text[k] && k < cache.length - 1) k++;
+    text = full; cache.length = k + 1;
+    if (!cache[0]) cache[0] = { state: model.zeroState(), probs: null };
+    if (busy) clearTimeout(busy);
+    const work = () => {
+      const t0 = performance.now();
+      while (cache.length <= text.length && performance.now() - t0 < 30) {
+        const i = cache.length - 1, st = model.cloneState(cache[i].state);
+        const logits = model.step(st, CHARS.indexOf(text[i]));
+        cache.push({ state: st, probs: softmax(logits) });
+      }
+      render();
+      if (cache.length <= text.length) busy = setTimeout(work, 0); else busy = null;
+    };
+    work();
+  }
+
+  const fmtCh = (c) => c === " " ? "␣" : c;
+  function bucket(bits) { return bits < 0.5 ? 0 : bits < 1 ? 1 : bits < 2 ? 2 : bits < 3 ? 3 : bits < 5 ? 4 : 5; }
+  function render() {
+    const userLen = text.length - genText.length;
+    let html = "";
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i], prev = cache[i] && cache[i].probs;
+      let cls = "";
+      if (prev) cls = "b" + bucket(-Math.log2(prev[CHARS.indexOf(c)]));
+      if (i >= userLen) cls += " gen";
+      html += `<span class="${cls}${c === " " ? " sp" : ""}" data-i="${i}">${c === " " ? "&nbsp;" : c}</span>`;
+    }
+    heat.innerHTML = html; heat.appendChild(tip);
+    const last = cache[text.length] && cache[text.length].probs;
+    if (last) {
+      const top = last.map((p, i) => [p, i]).sort((a, b) => b[0] - a[0]).slice(0, 6);
+      bars.innerHTML = top.map(([p, i]) => `<div class="bar-row"><span class="ch">${fmtCh(CHARS[i])}</span><div class="track"><div class="fill" style="width:${(p * 100).toFixed(1)}%"></div></div><span class="pct">${(p * 100).toFixed(1)}%</span></div>`).join("");
+    } else if (!text.length) bars.innerHTML = '<p class="small muted">Type something first.</p>';
+  }
+  heat.addEventListener("pointerover", (ev) => {
+    const s = ev.target.closest("span[data-i]"); if (!s) return;
+    const i = +s.dataset.i, pr = cache[i] && cache[i].probs;
+    if (!pr) { tip.innerHTML = "First character: nothing to predict from yet."; }
+    else {
+      const c = text[i], p = pr[CHARS.indexOf(c)];
+      const top = pr.map((q, j) => [q, j]).sort((a, b) => b[0] - a[0]).slice(0, 3);
+      tip.innerHTML = `<b>“${fmtCh(c)}”</b>: model gave it ${(p * 100).toFixed(1)}% (${(-Math.log2(p)).toFixed(1)} bits)<div class="muted">Expected: ${top.map(([q, j]) => `${fmtCh(CHARS[j])} ${(q * 100).toFixed(0)}%`).join(" · ")}</div>`;
+    }
+    const r = heat.getBoundingClientRect(), b = s.getBoundingClientRect();
+    Charts.placeTip(tip, heat, b.right - r.left, b.bottom - r.top + 6);
+  });
+  heat.addEventListener("pointerleave", () => (tip.style.display = "none"));
+
+  input.addEventListener("input", () => { genText = ""; update(); });
+  const temp = document.getElementById("temp"), tempv = document.getElementById("tempv");
+  temp.oninput = () => (tempv.textContent = (+temp.value).toFixed(2));
+  const genBtn = document.getElementById("gen"), stopBtn = document.getElementById("stop");
+  genBtn.onclick = () => {
+    if (!model || generating) return;
+    generating = true; genBtn.disabled = true; stopBtn.disabled = false;
+    let n = 0;
+    const tick = () => {
+      if (!generating || n >= 120 || busy) { if (busy && generating && n < 120) return setTimeout(tick, 30); return finish(); }
+      const pr = softmax(Array.from(cache[text.length].probs, (p) => Math.log(p + 1e-12)), +temp.value);
+      let r = Math.random(), j = 0; while (j < 26 && (r -= pr[j]) > 0) j++;
+      genText += CHARS[j]; n++; update();
+      setTimeout(tick, 25);
+    };
+    const finish = () => { generating = false; genBtn.disabled = false; stopBtn.disabled = true; };
+    tick();
+  };
+  stopBtn.onclick = () => (generating = false);
+
+
+  // ---------- guessing game: you against the model ----------
+  function initGame() {
+    const SENT = ["the first run is slow and the second run is fast", "every letter tells you a little about the next one", "a good guess needs very little correction afterwards", "the model has read a lot of text but never this line"];
+    const KNOWN = 4, TURNS = 20, $ = (id) => document.getElementById(id);
+    const ui = $("game-ui"), textEl = $("game-text"), keys = $("game-keys"), tiles = $("game-tiles"), score = $("game-score"), note = $("game-note");
+    let s, i, st, probs, tried, res, round = -1;
+    const advance = (c) => { probs = softmax(model.step(st, CHARS.indexOf(c))); };
+    const rank = (c) => { const p = probs[CHARS.indexOf(c)]; let r = 1; for (const q of probs) if (q > p) r++; return r; };
+    const done = () => res.length >= TURNS;
+    function start() { round = (round + 1) % SENT.length; s = SENT[round]; st = model.zeroState(); res = []; tried = new Set(); for (i = 0; i < KNOWN; i++) advance(s[i]); draw(); }
+    function guess(c) {
+      if (done() || tried.has(c)) return; tried.add(c);
+      if (c === s[i]) { res.push({ c, you: tried.size, model: rank(c) }); advance(c); i++; tried = new Set(); }
+      draw();
+    }
+    const btns = {};
+    for (const c of CHARS) { const b = document.createElement("button"); b.type = "button"; b.textContent = c === " " ? "space" : c; if (c === " ") b.className = "sp"; b.onclick = () => guess(c); keys.appendChild(b); btns[c] = b; }
+    ui.addEventListener("keydown", (ev) => { const k = ev.key.toLowerCase(); if (k.length === 1 && CHARS.includes(k) && !ev.metaKey && !ev.ctrlKey) { ev.preventDefault(); guess(k); } });
+    $("game-new").onclick = start;
+    function draw() {
+      const shown = s.slice(0, i).replace(/ /g, "\u00a0");
+      textEl.textContent = shown; if (!done()) { const cur = document.createElement("span"); cur.className = "cur"; cur.innerHTML = "&nbsp;"; textEl.appendChild(cur); }
+      for (const c of CHARS) btns[c].disabled = done() || tried.has(c);
+      tiles.innerHTML = res.map((r) => `<div class="${r.you < r.model ? "win" : r.you > r.model ? "lose" : ""}">${fmtCh(r.c)}<small>${r.you} / ${r.model}</small></div>`).join("");
+      const n = res.length, f = (k) => n ? res.filter((r) => r[k] === 1).length : 0, avg = (k) => n ? (res.reduce((t, r) => t + r[k], 0) / n).toFixed(1) : "0";
+      score.innerHTML = `<div><b>${f("you")} of ${n}</b><span>your first guesses that were right</span></div><div><b>${f("model")} of ${n}</b><span>the model's first guesses that were right</span></div><div><b>${avg("you")} vs ${avg("model")}</b><span>average guesses per letter, you vs the model</span></div>`;
+      note.textContent = done() ? "Finished. Shannon's subjects got 80% of first guesses right with 99 letters of context." : `Letter ${n + 1} of ${TURNS}. Click a key, or click here and type.`;
+    }
+    $("game-wait").hidden = true; ui.hidden = false; start();
+  }
+
+  const startLoad = () => load().catch((e) => { document.getElementById("loader").textContent = "The model weights did not load (" + e.message + "). Reload the page to try again."; });
+  const conn = navigator.connection;
+  if (conn && (conn.saveData || /2g|3g/.test(conn.effectiveType || ""))) {
+    const L = document.getElementById("loader"), keep = L.innerHTML;
+    L.innerHTML = 'You are on a slow or data-saving connection, and the model is a 9 MB download. <button class="btn sm primary" type="button" id="loadnow">Load the model</button>';
+    document.getElementById("loadnow").onclick = () => { L.innerHTML = keep; startLoad(); };
+  } else startLoad();
+})();
+</script>
+
+<script>
+(() => {
+  const S = {"shannon": [[0, 18.2], [1, 29.2], [2, 36], [3, 47], [4, 51], [5, 58], [6, 48], [7, 66], [8, 66], [9, 67], [10, 62], [11, 58], [12, 66], [13, 72], [14, 60], [15, 80]], "lstm": [[0, 18.8], [1, 27.8], [2, 36.6], [3, 44.4], [4, 48.6], [5, 50.7], [6, 55.4], [7, 57.4], [8, 57.1], [9, 57.0], [10, 56.7], [11, 56.2], [12, 59.0], [13, 58.0], [14, 56.4], [15, 58.6]], "ngram": [[0, 18.8], [1, 28.1], [2, 38.6], [4, 52.9]], "rows": [{"N": 2, "known": 1, "first": 27.8, "se": 1.0, "ce": 3.39, "up": 3.52, "lo": 2.57}, {"N": 3, "known": 2, "first": 36.6, "se": 1.1, "ce": 2.98, "up": 3.21, "lo": 2.18}, {"N": 4, "known": 3, "first": 44.4, "se": 1.1, "ce": 2.54, "up": 2.87, "lo": 1.84}, {"N": 5, "known": 4, "first": 48.6, "se": 1.1, "ce": 2.32, "up": 2.66, "lo": 1.65}, {"N": 6, "known": 5, "first": 50.7, "se": 1.1, "ce": 2.2, "up": 2.61, "lo": 1.59}, {"N": 7, "known": 6, "first": 55.4, "se": 1.1, "ce": 2.06, "up": 2.47, "lo": 1.45}, {"N": 8, "known": 7, "first": 57.4, "se": 1.1, "ce": 1.96, "up": 2.41, "lo": 1.4}, {"N": 9, "known": 8, "first": 57.1, "se": 1.1, "ce": 1.97, "up": 2.41, "lo": 1.4}, {"N": 10, "known": 9, "first": 57.0, "se": 1.1, "ce": 1.97, "up": 2.44, "lo": 1.42}, {"N": 11, "known": 10, "first": 56.7, "se": 1.1, "ce": 1.99, "up": 2.43, "lo": 1.41}, {"N": 12, "known": 11, "first": 56.2, "se": 1.1, "ce": 1.97, "up": 2.4, "lo": 1.4}, {"N": 13, "known": 12, "first": 59.0, "se": 1.1, "ce": 1.94, "up": 2.36, "lo": 1.35}, {"N": 14, "known": 13, "first": 58.0, "se": 1.1, "ce": 1.95, "up": 2.35, "lo": 1.35}, {"N": 15, "known": 14, "first": 56.4, "se": 1.1, "ce": 2.02, "up": 2.43, "lo": 1.42}, {"N": 100, "known": 99, "first": 58.6, "se": 1.1, "ce": 1.92, "up": 2.35, "lo": 1.35}]};
+  const lab = (i) => i === 15 ? "99" : String(i);
+  Charts.line(document.getElementById("shannonchart"), {
+    height: 300, yMin: 0, yMax: 100, yFmt: (v) => v + "%", tipFmt: (v) => v.toFixed(1) + "%",
+    xLabel: "Letters known", xFmt: lab, xTicks: [0, 2, 4, 6, 8, 10, 12, 14, 15],
+    series: [
+      { name: "Shannon's human subjects", color: "--s2", points: S.shannon },
+      { name: "Trained LSTM", color: "--s1", points: S.lstm },
+    ],
+  });
+})();
+</script>
+</body>
+</html>

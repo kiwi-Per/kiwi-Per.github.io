@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Traffic sign classification · Kyi Wai Thant</title>
+<meta name="description" content="Comparing five CNNs for 23-class traffic sign recognition: does more model complexity mean more accuracy?">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%2315223d%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2712%27 fill=%27%23eaa417%27/%3E%3C/svg%3E">
+<meta property="og:title" content="Traffic sign classification · Kyi Wai Thant">
+<meta property="og:description" content="Comparing five CNNs for 23-class traffic sign recognition: does more model complexity mean more accuracy?">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#15223d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../site.css">
+<script src="../../site.js"></script>
+<style>
+  .play { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 680px) { .play { grid-template-columns: 1fr; } }
+  canvas.main { width: 256px; height: 256px; border-radius: 10px; border: 1px solid var(--line); image-rendering: auto; display: block; }
+  .thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+  .thumbs button { padding: 0; border: 2px solid transparent; border-radius: 8px; background: none; cursor: pointer; line-height: 0; }
+  .thumbs button[aria-pressed="true"] { border-color: var(--accent); }
+  .thumbs img { width: 48px; height: 48px; border-radius: 6px; display: block; }
+  .sliders { display: grid; gap: 10px; margin: 0 0 16px; }
+  .sliders label.slider { display: grid; grid-template-columns: 92px 1fr 64px; }
+  .variants { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-top: 18px; }
+  @media (max-width: 680px) { .variants { grid-template-columns: repeat(4, 1fr); } }
+  .variants canvas { width: 100%; aspect-ratio: 1; border-radius: 6px; border: 1px solid var(--line); }
+  .heatwrap { overflow-x: auto; }
+  .heatgrid { display: grid; gap: 2px; font-family: var(--mono); font-size: 10px; color: var(--muted); position: relative; min-width: 560px; }
+  .heatgrid .c { aspect-ratio: 1; border-radius: 2px; background: var(--seq-0); display: flex; align-items: center; justify-content: center; font-size: 10px; }
+  .heatgrid .c.diag { background: transparent; outline: 1px dashed var(--line); outline-offset: -2px; }
+  .heatgrid .lab { display: flex; align-items: center; justify-content: center; }
+  .heatgrid .q1 { background: var(--seq-1); color: var(--on-seq-lo); } .heatgrid .q2 { background: var(--seq-2); color: var(--on-seq-lo); } .heatgrid .q3 { background: var(--seq-3); color: #fff; }
+  .heatgrid .q4 { background: var(--seq-4); color: var(--on-seq-hi); } .heatgrid .q5 { background: var(--seq-5); color: var(--on-seq-hi); }
+  .heat-legend { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); margin-top: 10px; flex-wrap: wrap; }
+  .heat-legend i { width: 18px; height: 12px; border-radius: 2px; display: inline-block; }
+  .axis-cap { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+  .pairs { font-size: 14px; margin-top: 14px; }
+  .pairs li { margin-bottom: 2px; }
+</style>
+</head>
+<body data-toc>
+<header class="nav"><div class="wrap nav-in">
+  <a class="brand" href="../../index.html">Kyi Wai Thant</a>
+  <nav aria-label="Site">
+    <a href="../../index.html#projects" aria-current="page">Projects</a>
+    <a href="../../process/index.html">How I work</a>
+    <a href="../../index.html#about">About</a>
+    <a href="../../index.html#contact">Contact</a>
+  </nav>
+</div></header>
+
+<main class="wrap article">
+  <div class="hero prose">
+    <p class="eyebrow">TensorFlow / Keras, Team of 4</p>
+    <h1>Does a bigger network make a better classifier?</h1>
+    <p class="lede">We trained five CNNs to recognise 23 classes of traffic signs, from a single convolutional layer up to a 24.6-million-parameter ResNet50. The biggest model came last, and a lightweight network built for phones won. Looking back, the more interesting lessons were in the data pipeline.</p>
+    <p class="meta-line">Team: Evan Ng, Kyi Wai, Mario Hanzel and Sydney Sim. Code: <a href="https://github.com/syd9191/Traffic-Sign-Classifier">github.com/syd9191/Traffic-Sign-Classifier</a></p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v">12 → 2</div><div class="l">reported test misclassifications after fine-tuning MobileNetV2's last 5 layers</div></div>
+    <div class="stat"><div class="v">1.00</div><div class="l">reported F1 on the safety-critical classes (stop, pedestrian crossing)</div></div>
+    <div class="stat"><div class="v">0.56</div><div class="l">ResNet50 accuracy: largest model, worst result</div></div>
+    <div class="stat"><div class="v">≈ 2 in 3</div><div class="l">test photos had already been used for training, as I found in a later review</div></div>
+  </div>
+
+  <aside class="inshort"><strong class="t">In short</strong><ul><li>MobileNetV2, a small pretrained network, beat ResNet50, which is about eight times larger.</li><li>The reported results are optimistic. Our data loader reshuffled every epoch, so <a href="#why">about two thirds of the test photos had been used for training</a>.</li><li>ResNet50 probably failed because of its input format, not its size. That is the first experiment I would rerun.</li></ul></aside>
+
+  <section>
+    <h2>Results</h2>
+    <p class="prose">We cared most about F1 on two classes where a mistake on the road is dangerous: stop signs and pedestrian crossings.</p>
+    <div class="panel table-scroll">
+      <table class="results">
+        <thead><tr><th>Model</th><th>Total params</th><th>Trainable</th><th>Test accuracy</th><th>F1 stop</th><th>F1 pedestrian</th><th>Errors</th></tr></thead>
+        <tbody>
+          <tr><td>ResNet50 (frozen, ImageNet)</td><td>24.6M</td><td>1.06M</td><td>0.56</td><td>0.73</td><td>0.57</td><td>328</td></tr>
+          <tr><td>Shallow CNN (1 conv layer)</td><td>2.03M</td><td>2.03M</td><td>0.87</td><td>0.90</td><td>0.96</td><td>95</td></tr>
+          <tr><td>Deep CNN (3 conv layers)</td><td>0.82M</td><td>0.82M</td><td>0.97</td><td>0.98</td><td>1.00</td><td>26</td></tr>
+          <tr><td>MobileNetV2 (frozen, ImageNet)</td><td>2.93M</td><td>0.67M</td><td>0.98</td><td>1.00</td><td>1.00</td><td>12</td></tr>
+          <tr class="best"><td>MobileNetV2, last 5 layers fine-tuned</td><td>2.93M</td><td>1.08M</td><td>1.00</td><td>1.00</td><td>1.00</td><td>2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <p class="panel-title">Model size vs test accuracy</p>
+      <p class="panel-sub">Parameter count on a log scale. Hover a point for details.</p>
+      <div id="size"></div>
+    </div>
+    <p class="prose">At first glance this says "pick the right size of model". Looking back at the data pipeline, the story is more interesting: <a href="#why">see why we got these results</a>.</p>
+  </section>
+
+  <section>
+    <h2>Training curves</h2>
+    <div class="panel">
+      <p class="panel-title">Validation accuracy by epoch</p>
+      <p class="panel-sub">Each run stopped early once validation loss plateaued (patience 5). Click a legend item to hide that model.</p>
+      <div id="curves"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-short="Confusions">Where the models get confused</h2>
+    <p class="prose">Each cell counts test images of one class (row) predicted as another (column). Pick a model to see how its errors shrink and concentrate. The first option shows what happens when a model trained only on clean photos meets augmented ones.</p>
+    <div class="panel">
+      <div class="controls"><div class="seg" id="modelseg" role="group" aria-label="Model"></div></div>
+      <p class="axis-cap" id="miscount"></p>
+      <div class="heatwrap"><div class="heatgrid" id="grid"></div></div>
+      <div class="heat-legend">Errors per cell: <i class="q1" style="background:var(--seq-1)"></i>1 <i style="background:var(--seq-2)"></i>2 <i style="background:var(--seq-3)"></i>3–4 <i style="background:var(--seq-4)"></i>5–7 <i style="background:var(--seq-5)"></i>8+ · rows = true class, columns = predicted · class 6 = stop, class 10 = pedestrian crossing</div>
+      <ul class="pairs" id="pairs"></ul>
+      <p class="small muted">From the evaluation run saved in the project notebook. Totals there differ slightly from the report table above because it was a separate run.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-short="Augmentation">Augmentation playground</h2>
+    <p class="prose">The raw dataset was small and imbalanced (4,896 images, heavily skewed to a few classes). We undersampled to the median of 198 per class, then topped every class up to 400 with random rotations, zooms and brightness shifts. We avoided flips on purpose, because a mirrored "turn left" sign means "turn right". Try the same transformations on real samples from the dataset.</p>
+    <div class="panel">
+      <div class="thumbs" id="thumbs"></div>
+      <div class="play">
+        <canvas class="main" id="canvas" width="256" height="256" aria-label="Augmented traffic sign"></canvas>
+        <div>
+          <div class="sliders">
+            <label class="slider">Rotation <input type="range" id="rot" min="-72" max="72" value="0"><output id="rotv"></output></label>
+            <label class="slider">Zoom <input type="range" id="zoom" min="-20" max="20" value="0"><output id="zoomv"></output></label>
+            <label class="slider">Brightness <input type="range" id="bright" min="-20" max="20" value="0"><output id="brightv"></output></label>
+            <label class="slider">Noise <input type="range" id="noise" min="0" max="40" value="0"><output id="noisev"></output></label>
+          </div>
+          <div class="controls" style="margin:0">
+            <button class="btn primary" id="rand">Random augmentation</button>
+            <button class="btn" id="reset">Reset</button>
+          </div>
+          <p class="small muted" style="margin-top:12px">Ranges match the training pipeline: Keras <code>RandomRotation(0.2)</code> (±72°), <code>RandomZoom(0.2)</code>, <code>RandomBrightness(0.2)</code>, with reflected edges. Noise follows our distortion experiments.</p>
+        </div>
+      </div>
+      <p class="panel-sub" style="margin:18px 0 0">Eight random variants, like the ones added to the training set:</p>
+      <div class="variants" id="variants"></div>
+    </div>
+  </section>
+
+  <section id="why">
+    <h2 data-short="Why these results">Why we got these results</h2>
+    <p class="prose muted">After the project I went back through the data pipeline asking one question: what would these numbers look like if the test set were truly unseen? The short answer is that they'd likely be lower. Here's why, and what I'd change.</p>
+
+    <div class="finding">
+      <h3><span class="n">01</span>The test set changed every epoch</h3>
+      <p class="prose">We split the data by taking the first 70% of batches for training, the next 20% for validation and the rest for testing. But Keras's <code>image_dataset_from_directory</code> reshuffles its file order every time the dataset is iterated, so each epoch drew a <em>different</em> 70%. I simulated the same shuffle: by the end of training, about <strong>two thirds of the "test" images had already appeared in training batches</strong>.</p>
+      <div class="panel">
+        <p class="panel-title">Run the simulation yourself</p>
+        <p class="panel-sub">Same settings as our notebook: 9,200 photos, batches of 256, a shuffle buffer of 8 batches, the first 25 batches for training and the last 752 photos for testing. The share levels off near two thirds, because photos at the very end of the file order can never reach the training batches.</p>
+        <div id="leaksim"></div>
+      </div>
+      <div class="callout"><strong>A clue in our own results:</strong> the report lists 95, 26, 12 and 2 errors, but the notebook's evaluation shows 87, 27, 11 and 3. A fixed model scored on a fixed test set gives the same count every time, and with this pipeline the test set is never fixed.</div>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">02</span>Augmented copies leaked across the split</h3>
+      <p class="prose">The raw classes ranged from about 108 to 514 photos, roughly a 5:1 imbalance. We capped each class at 198 photos (discarding about 1,000 real ones) and then generated rotated, zoomed and brightened copies up to 400 per class. Only about 40% of the final 9,200 images are distinct photos; the rest are variants of them. Because augmentation happened <em>before</em> the split, a test image was often a slightly rotated twin of a training image.</p>
+      <p class="prose">So the test mostly measured recognising photos the model had effectively seen, not new signs on a new street. It also helps explain why MobileNetV2 passed 95% validation accuracy by its third epoch: the validation split leaked in the same way.</p>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">03</span>ResNet50 probably failed because of its inputs, not its size</h3>
+      <p class="prose">Pretrained networks expect inputs in the same format they were trained on. Keras's ResNet50 expects raw 0–255 pixels with the ImageNet mean subtracted; we gave it pixels scaled to 0–1, so after its mean subtraction every image looked like an almost uniform, nearly black frame with 1/255 of its normal contrast. Its layers were frozen, including the normalisation layers, so it couldn't adapt. MobileNetV2 expects values from −1 to 1; our 0–1 input was a much milder mismatch.</p>
+      <div class="callout"><strong>Revised takeaway:</strong> "bigger isn't better" may be true here, but our ResNet50 result can't show it. The fair test is to rerun ResNet50 with its own <code>preprocess_input</code>. That's the first experiment I'd run next.</div>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">04</span>Small test sets make near-perfect scores fuzzy</h3>
+      <p class="prose">The test set was 752 images, about 33 per class. Even taking the numbers at face value:</p>
+      <ul class="prose">
+        <li>2 errors in 752 gives a 95% confidence interval of <strong>99.0%–99.97%</strong> accuracy. Respectable, but not "1.00".</li>
+        <li>A perfect F1 on about 33 stop signs is still consistent with a true miss rate of up to about 10%.</li>
+        <li>The early "perfect accuracy on clean data" came from a single leftover batch of just <strong>32 images</strong>.</li>
+        <li>12 vs 2 errors would be a significant difference (p ≈ 0.013) on a shared test set, but ours wasn't shared.</li>
+      </ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="n">05</span>What I'd do differently</h3>
+      <ul class="prose">
+        <li>Split by original photo <em>first</em>, save the split to disk, and only then augment the training images.</li>
+        <li>Use each pretrained model's own preprocessing, and compare frozen vs fine-tuned fairly across architectures.</li>
+        <li>Keep the discarded photos and handle imbalance with class weights instead.</li>
+        <li>Report confidence intervals, and repeat training across seeds before ranking models.</li>
+      </ul>
+    </div>
+  </section>
+
+  <nav class="pager" aria-label="More pages"><a href="../char-lstm/index.html"><span>Previous</span><b>Language models</b></a><a class="next" href="../stock-direction/index.html"><span>Next</span><b>Stock direction</b></a></nav>
+  <footer>Kyi Wai Thant. Results come from the team's project report and notebook.</footer>
+</main>
+
+<script src="../charts.js"></script>
+<script src="../../widgets.js"></script>
+<script src="data.js"></script>
+<script>
+(() => {
+  const D = window.DATA;
+  const ORDER = ["Shallow CNN", "Deep CNN", "ResNet50", "MobileNetV2", "Fine-tuned MobileNetV2"];
+  const COLORS = { "Shallow CNN": "--s1", "Deep CNN": "--s2", "ResNet50": "--s3", "MobileNetV2": "--s4", "Fine-tuned MobileNetV2": "--s5" };
+
+  // size vs accuracy
+  const models = [
+    { n: "ResNet50", p: 24648599, t: 1060887, a: 0.56, e: 328 },
+    { n: "Shallow CNN", p: 2033367, t: 2033367, a: 0.87, e: 95 },
+    { n: "Deep CNN", p: 818695, t: 818695, a: 0.97, e: 26 },
+    { n: "MobileNetV2", p: 2925655, t: 667671, a: 0.98, e: 12, dy: 14 },
+    { n: "Fine-tuned MobileNetV2", p: 2925655, t: 1080471, a: 1.0, e: 2, dy: -6 },
+  ];
+  const M = (v) => (v / 1e6).toFixed(2) + "M";
+  Charts.scatter(document.getElementById("size"), {
+    height: 300, xLog: true, xMin: 5e5, xMax: 4e7, xTicks: [1e6, 3e6, 1e7, 3e7], xFmt: (v) => (v / 1e6) + "M",
+    yMin: 0.5, yMax: 1.0, yTicks: [0.5, 0.6, 0.7, 0.8, 0.9, 1.0], yFmt: (v) => v.toFixed(1),
+    xLabel: "Total parameters (log scale)", yLabel: "Test accuracy",
+    points: models.map((m) => ({ x: m.p, y: m.a, label: m.n, labelDy: m.dy, color: COLORS[m.n], r: 6,
+      tip: `<b>${m.n}</b><br>${M(m.p)} params (${M(m.t)} trainable)<br>Accuracy ${m.a.toFixed(2)} · ${m.e} errors` })),
+  });
+
+  // curves
+  Charts.line(document.getElementById("curves"), {
+    height: 320, xLabel: "Epoch", yLabel: "Validation accuracy", yMin: 0, yMax: 1, yFmt: (v) => v.toFixed(1), tipFmt: (v) => (v * 100).toFixed(1) + "%",
+    series: ORDER.map((n) => ({ name: n, color: COLORS[n], points: D.hist[n].val_accuracy.map((v, i) => [i + 1, v]) })),
+  });
+
+  // confusion
+  const MIS_ORDER = ["Deep CNN (no augmentation)", "Shallow CNN", "Deep CNN", "ResNet50", "MobileNetV2", "Fine-tuned MobileNetV2"];
+  const SHORT = { "Deep CNN (no augmentation)": "Trained on clean data", "Fine-tuned MobileNetV2": "Fine-tuned MobileNetV2" };
+  const seg = document.getElementById("modelseg"), grid = document.getElementById("grid");
+  const tip = Charts.makeTip(grid.parentElement);
+  grid.parentElement.style.position = "relative";
+  const q = (n) => n >= 8 ? 5 : n >= 5 ? 4 : n >= 3 ? 3 : n >= 2 ? 2 : 1;
+  function drawGrid(name) {
+    const mis = D.mis[name]; const N = 23;
+    grid.style.gridTemplateColumns = `22px repeat(${N}, 1fr)`;
+    let html = '<div></div>' + Array.from({ length: N }, (_, j) => `<div class="lab">${j}</div>`).join("");
+    let total = 0; const pairs = [];
+    for (let i = 0; i < N; i++) {
+      html += `<div class="lab">${i}</div>`;
+      for (let j = 0; j < N; j++) {
+        const n = (mis[i] && mis[i][j]) || 0; total += n; if (n) pairs.push([n, i, j]);
+        html += i === j ? '<div class="c diag"></div>' : `<div class="c ${n ? "q" + q(n) : ""}" data-t="${i}" data-p="${j}" data-n="${n}">${n || ""}</div>`;
+      }
+    }
+    grid.innerHTML = html;
+    document.getElementById("miscount").textContent = `${total} misclassified test images`;
+    pairs.sort((a, b) => b[0] - a[0]);
+    const nm = (c) => c === 6 ? "6 (stop)" : c === 10 ? "10 (pedestrian)" : c;
+    document.getElementById("pairs").innerHTML = pairs.length
+      ? "<li class='muted' style='list-style:none;margin-left:-1.2em'>Most common confusions:</li>" + pairs.slice(0, 3).map(([n, i, j]) => `<li>class ${nm(i)} → predicted ${nm(j)}: ${n}×</li>`).join("")
+      : "";
+  }
+  grid.addEventListener("pointerover", (ev) => {
+    const c = ev.target.closest(".c[data-t]"); if (!c) return;
+    tip.innerHTML = `True class <b>${c.dataset.t}</b> → predicted <b>${c.dataset.p}</b><br>${c.dataset.n} image${c.dataset.n === "1" ? "" : "s"}`;
+    const r = grid.parentElement.getBoundingClientRect(), b = c.getBoundingClientRect();
+    Charts.placeTip(tip, grid.parentElement, b.right - r.left, b.top - r.top);
+  });
+  grid.addEventListener("pointerleave", () => (tip.style.display = "none"));
+  MIS_ORDER.forEach((n, k) => {
+    const b = document.createElement("button"); b.textContent = SHORT[n] || n; b.setAttribute("aria-pressed", k === 1);
+    b.onclick = () => { seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b)); drawGrid(n); };
+    seg.appendChild(b);
+  });
+  drawGrid("Shallow CNN");
+
+  // augmentation playground
+  const SAMPLES = ["speed-50", "no-right-turn", "bicycles", "motor-vehicles", "no-stopping", "pedestrian-warning"];
+  const imgs = {}; let cur = SAMPLES[0];
+  const ctl = { rot: 0, zoom: 0, bright: 0, noise: 0 };
+  const ids = ["rot", "zoom", "bright", "noise"];
+  const fmt = { rot: (v) => v + "°", zoom: (v) => (v > 0 ? "+" : "") + v + "%", bright: (v) => (v > 0 ? "+" : "") + v + "%", noise: (v) => "σ " + v };
+  function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function render(canvas, img, p) {
+    const S = canvas.width, c = canvas.getContext("2d");
+    c.save(); c.clearRect(0, 0, S, S);
+    c.translate(S / 2, S / 2); c.rotate(p.rot * Math.PI / 180);
+    const z = 1 - p.zoom / 100; c.scale(1 / z, 1 / z);
+    // reflect padding: mirrored tiles around the image
+    for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) {
+      c.save(); c.translate(dx * S, dy * S); c.scale(dx % 2 ? -1 : 1, dy % 2 ? -1 : 1);
+      c.drawImage(img, -S / 2, -S / 2, S, S); c.restore();
+    }
+    c.restore();
+    if (p.bright || p.noise) {
+      const d = c.getImageData(0, 0, S, S), a = d.data, b = p.bright / 100 * 255;
+      for (let i = 0; i < a.length; i += 4) {
+        const n = p.noise ? gauss() * p.noise : 0;
+        for (let k = 0; k < 3; k++) a[i + k] = Math.max(0, Math.min(255, a[i + k] + b + n));
+      }
+      c.putImageData(d, 0, 0);
+    }
+  }
+  const main = document.getElementById("canvas");
+  const draw = () => imgs[cur] && render(main, imgs[cur], ctl);
+  ids.forEach((id) => {
+    const el = document.getElementById(id), out = document.getElementById(id + "v");
+    const sync = () => { ctl[id] = +el.value; out.textContent = fmt[id](ctl[id]); };
+    el.oninput = () => { sync(); draw(); }; sync();
+  });
+  const setCtl = (v) => ids.forEach((id) => { document.getElementById(id).value = v[id]; ctl[id] = v[id]; document.getElementById(id + "v").textContent = fmt[id](v[id]); });
+  const randomParams = () => ({ rot: Math.round((Math.random() * 2 - 1) * 72), zoom: Math.round((Math.random() * 2 - 1) * 20), bright: Math.round((Math.random() * 2 - 1) * 20), noise: 0 });
+  document.getElementById("rand").onclick = () => { setCtl(randomParams()); draw(); };
+  document.getElementById("reset").onclick = () => { setCtl({ rot: 0, zoom: 0, bright: 0, noise: 0 }); draw(); };
+  const variants = document.getElementById("variants");
+  const drawVariants = () => {
+    variants.innerHTML = "";
+    for (let k = 0; k < 8; k++) { const cv = document.createElement("canvas"); cv.width = cv.height = 128; variants.appendChild(cv); render(cv, imgs[cur], randomParams()); }
+  };
+  const thumbs = document.getElementById("thumbs");
+  SAMPLES.forEach((s, k) => {
+    const img = new Image(); img.src = `img/${s}.png`; img.alt = s.replace(/-/g, " ");
+    img.onload = () => { imgs[s] = img; if (s === cur) { draw(); drawVariants(); } };
+    const b = document.createElement("button"); b.setAttribute("aria-pressed", k === 0); b.title = img.alt; b.appendChild(img.cloneNode());
+    b.querySelector("img").src = img.src;
+    b.onclick = () => { cur = s; thumbs.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b)); draw(); drawVariants(); };
+    thumbs.appendChild(b);
+  });
+})();
+</script>
+<script>Widgets.leakSim(document.getElementById("leaksim"));</script>
+</body>
+</html>

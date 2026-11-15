@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How I work · Kyi Wai Thant</title>
+<meta name="description" content="Step-by-step process of three machine learning projects, written in ASD-STE100 Simplified Technical English.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%2315223d%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2712%27 fill=%27%23eaa417%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../site.css">
+<script src="../site.js"></script>
+<style>
+  section.project { padding: 56px 0 8px; border-bottom: 1px solid var(--line); }
+  main.article > h1 { margin-top: 56px; }
+  .std { display: inline-block; font-size: 13.5px; color: var(--fg); background: var(--accent-soft); padding: 4px 10px; border-radius: 6px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); margin: 18px 0 0; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .goal { max-width: 42em; margin: 0 0 22px; }
+
+  /* flow */
+  .flow { display: grid; grid-template-columns: repeat(var(--cols, 4), 1fr); gap: 10px; margin: 8px 0 28px; }
+  @media (max-width: 640px) { .flow { grid-template-columns: repeat(2, 1fr); } }
+    .flow a { text-decoration: none; color: var(--fg); border-radius: 10px; padding: 10px 12px; border: 1px solid var(--line); position: relative; font-size: 13px; line-height: 1.35; }
+  .flow a b { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 2px; }
+  .flow a.data { background: var(--data-soft); } .flow a.data b { color: var(--data); }
+  .flow a.prep { background: var(--prep-soft); } .flow a.prep b { color: var(--prep); }
+  .flow a.model { background: var(--model-soft); } .flow a.model b { color: var(--model); }
+  .flow a.eval { background: var(--eval-soft); } .flow a.eval b { color: var(--eval); }
+  .flow a:hover { border-color: var(--fg); }
+
+  /* steps */
+  ol.steps { list-style: none; padding: 0; margin: 0; }
+  ol.steps > li { display: grid; grid-template-columns: 44px 1fr; gap: 0 14px; padding: 18px 0; border-top: 1px solid var(--line); scroll-margin-top: 20px; }
+  ol.steps > li .num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 500 13px var(--mono); color: #fff; }
+  .num.data { background: var(--data); } .num.prep { background: var(--prep); } .num.model { background: var(--model); } .num.eval { background: var(--eval); }
+  ol.steps p { margin: 0 0 8px; max-width: 42em; }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .facts span { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; background: var(--card); }
+
+  .figure { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin: 24px 0; }
+  .figure .t { font-weight: 600; font-size: 15px; margin: 0 0 2px; }
+  .figure .s { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  .figure svg { display: block; width: 100%; height: auto; }
+  .figure svg text { font-family: var(--sans); font-size: 12px; fill: var(--muted); }
+  .figure svg .lbl { fill: var(--fg); font-size: 12px; }
+  .note { background: var(--accent-soft); border-radius: 10px; padding: 12px 16px; font-size: 15px; margin: 16px 0 0; max-width: 46em; }
+  @media (max-width: 600px) { ol.steps > li { grid-template-columns: 36px 1fr; } }
+</style>
+</head>
+<body data-toc>
+<header class="nav"><div class="wrap nav-in">
+  <a class="brand" href="../index.html">Kyi Wai Thant</a>
+  <nav aria-label="Site">
+    <a href="../index.html#projects">Projects</a>
+    <a href="../process/index.html" aria-current="page">How I work</a>
+    <a href="../index.html#about">About</a>
+    <a href="../index.html#contact">Contact</a>
+  </nav>
+</div></header>
+
+<main class="wrap article">
+  <h1>How the three projects work</h1>
+  <p class="lede">This page shows the process of each project from the data to the result. Each section has a flow diagram, the steps in sequence, and one diagram of the most important step.</p>
+  <span class="std">Writing standard: ASD-STE100 Simplified Technical English</span>
+  <div class="legend"><span><i style="background:var(--data)"></i>Data</span><span><i style="background:var(--prep)"></i>Preparation</span><span><i style="background:var(--model)"></i>Models</span><span><i style="background:var(--eval)"></i>Evaluation and review</span></div>
+
+  <!-- ===================== TRAFFIC ===================== -->
+  <section class="project" id="traffic">
+    <p class="eyebrow">Project 1, Team of 4, TensorFlow / Keras</p>
+    <h2>Traffic sign classification</h2>
+    <p class="goal"><strong>Goal:</strong> Identify the class of a traffic sign in a photo. There are 23 classes. The team compared five convolutional neural networks (CNNs). The team gave more importance to two classes: stop signs and pedestrian-crossing signs.</p>
+    <p><a class="btn sm" href="../projects/traffic-signs/index.html">Open the traffic sign project</a></p>
+
+    <div class="flow">
+      <a class="data" href="#t1"><b>1. Data</b>Collect 4,896 photos</a>
+      <a class="data" href="#t2"><b>2. Data</b>Examine class sizes</a>
+      <a class="prep" href="#t3"><b>3. Preparation</b>Balance and augment</a>
+      <a class="prep" href="#t4"><b>4. Preparation</b>Divide into sets</a>
+      <a class="model" href="#t5"><b>5. Models</b>Train five CNNs</a>
+      <a class="model" href="#t6"><b>6. Models</b>Fine-tune the best</a>
+      <a class="eval" href="#t7"><b>7. Evaluation</b>Measure results</a>
+      <a class="eval" href="#t8"><b>8. Review</b>Examine the pipeline</a>
+    </div>
+
+    <ol class="steps">
+      <li id="t1"><span class="num data">1</span><div><h3>Collect the photos</h3>
+        <p>The dataset has 4,896 photos in 23 folders. Each folder holds one class of sign. The team resized each photo to 128 × 128 pixels.</p>
+        <div class="facts"><span>4,896 photos</span><span>23 classes</span><span>128 × 128 px</span></div></div></li>
+      <li id="t2"><span class="num data">2</span><div><h3>Examine the class sizes</h3>
+        <p>The classes do not have the same size. The largest class has approximately 514 photos. The smallest class has approximately 108 photos. A model can prefer the large classes if the data stays like this.</p>
+        <div class="facts"><span>largest ≈ 514</span><span>smallest ≈ 108</span><span>ratio ≈ 5 : 1</span></div></div></li>
+      <li id="t3"><span class="num prep">3</span><div><h3>Balance and augment the classes</h3>
+        <p>First, the team removed photos from large classes until each class had a maximum of 198 photos. 198 is the median class size. Then, the team made new photos from the existing photos until each class had 400 photos.</p>
+        <p>Each new photo is a changed copy of a real photo. The changes are a random rotation, a random zoom and a random change of brightness. The team did not flip the photos. A flipped "turn left" sign has a different meaning.</p>
+        <div class="facts"><span>cap: 198 per class</span><span>target: 400 per class</span><span>total: 9,200</span><span>rotation ±72°</span><span>zoom ±20%</span><span>brightness ±20%</span></div></div></li>
+      <li id="t4"><span class="num prep">4</span><div><h3>Divide the data into three sets</h3>
+        <p>The team divided the photos into a training set (70%), a validation set (20%) and a test set (10%). The team divided the data by batches of 256 photos. Each pixel value was divided by 255, so that each value is between 0 and 1.</p>
+        <div class="facts"><span>train 70%</span><span>validation 20%</span><span>test 10% = 752 photos</span></div></div></li>
+      <li id="t5"><span class="num model">5</span><div><h3>Train five CNNs</h3>
+        <p>The team trained five models: a CNN with one convolution layer, a CNN with three convolution layers, ResNet50, MobileNetV2, and MobileNetV2 with fine-tuning. ResNet50 and MobileNetV2 used weights from ImageNet. Their layers were frozen. Only the new output layers learned.</p>
+        <p>Each model used the Adam optimiser. Training stopped when the validation loss did not improve for 5 epochs. The learning rate decreased by half when the validation loss did not improve for 2 epochs.</p>
+        <div class="facts"><span>Adam, lr 0.001</span><span>early stop: 5 epochs</span><span>lr × 0.5 after 2 epochs</span></div></div></li>
+      <li id="t6"><span class="num model">6</span><div><h3>Fine-tune the best model</h3>
+        <p>MobileNetV2 gave the best result. The team then let the last 5 layers of MobileNetV2 learn. The learning rate was smaller (0.0001), so that the pretrained weights changed slowly.</p>
+        <div class="facts"><span>5 layers unfrozen</span><span>lr 0.0001</span></div></div></li>
+      <li id="t7"><span class="num eval">7</span><div><h3>Measure the results</h3>
+        <p>The team measured accuracy, the number of wrong classifications, and the F1 score of the stop and pedestrian-crossing classes. The fine-tuned MobileNetV2 had 2 wrong classifications in the test set. ResNet50 had the worst result, with an accuracy of 0.56.</p>
+        <div class="facts"><span>fine-tuned MobileNetV2: 2 errors</span><span>MobileNetV2: 12 errors</span><span>ResNet50: accuracy 0.56</span></div></div></li>
+      <li id="t8"><span class="num eval">8</span><div><h3>Examine the pipeline after the project</h3>
+        <p>A later review found three problems. First, the data loader shuffled the photos again at each epoch. Thus, the three sets were different at each epoch (see the diagram below). Approximately two thirds of the test photos were also in the training batches of earlier epochs.</p>
+        <p>Second, the team augmented the photos before the split. Thus, a test photo was often a rotated copy of a training photo. Third, ResNet50 needs pixel values from 0 to 255 with the ImageNet mean removed. The team gave it values from 0 to 1. This can explain its bad result.</p>
+        <div class="facts"><span>≈ 2/3 of test photos seen in training</span><span>augment before split</span><span>wrong input scale for ResNet50</span></div></div></li>
+    </ol>
+
+    <div class="figure">
+      <p class="t">Why the test set was not fixed</p>
+      <p class="s">The loader changed the order of the photos at each epoch. The split took the first 70% of batches for training. Thus, the same photo (marked ★) was a training photo in epochs 1 and 2, and a test photo at the final test.</p>
+      <svg id="leak" viewBox="0 0 860 230" role="img" aria-label="Diagram of the split at three epochs"></svg>
+    </div>
+    <p class="note"><strong>Correct procedure:</strong> Divide the original photos into the three sets first. Save the division to disk. Then augment only the training photos.</p>
+  </section>
+
+  <!-- ===================== LANGUAGE ===================== -->
+  <section class="project" id="language">
+    <p class="eyebrow">Project 2, Team project, JAX / Flax</p>
+    <h2>Next-character language models</h2>
+    <p class="goal"><strong>Goal:</strong> Predict the next character of English text from the characters before it. The team built two models from zero: an LSTM and a decoder-only transformer. The team compared the two models on the same test text.</p>
+    <p><a class="btn sm" href="../projects/char-lstm/index.html">Open the language model project</a></p>
+
+    <div class="flow">
+      <a class="data" href="#l1"><b>1. Data</b>Load text8</a>
+      <a class="prep" href="#l2"><b>2. Preparation</b>Encode and divide</a>
+      <a class="model" href="#l3"><b>3. Models</b>Define two models</a>
+      <a class="model" href="#l4"><b>4. Models</b>Search settings</a>
+      <a class="model" href="#l5"><b>5. Models</b>Train fully</a>
+      <a class="eval" href="#l6"><b>6. Evaluation</b>Test on 5M chars</a>
+      <a class="eval" href="#l7"><b>7. Review</b>Analyse the errors</a>
+      <a class="eval" href="#l8"><b>8. Review</b>Compare with Shannon</a>
+    </div>
+
+    <ol class="steps">
+      <li id="l1"><span class="num data">1</span><div><h3>Load the text</h3>
+        <p>The data is text8: text from Wikipedia with only 27 characters. The characters are the 26 lowercase letters and the space. The training file has 90 million characters. The test file has 5 million characters.</p>
+        <div class="facts"><span>27 characters</span><span>train 90M</span><span>test 5M</span></div></div></li>
+      <li id="l2"><span class="num prep">2</span><div><h3>Encode and divide the text</h3>
+        <p>Each character became a number from 0 to 26. The team kept the last part of the training text as a validation set. The transformer used 12.5% for validation. The LSTM used 10%.</p>
+        <div class="facts"><span>a → 0 … z → 25, space → 26</span><span>validation 12.5% / 10%</span></div></div></li>
+      <li id="l3"><span class="num model">3</span><div><h3>Define the two models</h3>
+        <p>The LSTM reads the characters one at a time. It keeps a memory of fixed size and changes the memory after each character. The transformer looks at all earlier characters in its window at the same time. It learns which earlier characters are important.</p>
+        <div class="facts"><span>LSTM: 4 layers × 512, window 128</span><span>Transformer: 6 layers, width 256, 4 heads, window 192</span></div></div></li>
+      <li id="l4"><span class="num model">4</span><div><h3>Search for good settings</h3>
+        <p>The team used Bayesian optimisation (Optuna) to find good settings, for example the learning rate and the number of layers. Each trial trained a model for a short time. For the transformer, a pruner stopped weak trials early, so that more time was available for good trials.</p>
+        <div class="facts"><span>transformer: 75 trials, 57 stopped early</span><span>LSTM: 100 trials</span><span>800 steps per trial</span></div></div></li>
+      <li id="l5"><span class="num model">5</span><div><h3>Train the final models</h3>
+        <p>The team trained each model with the best settings. The transformer trained for 75,000 steps. Its learning rate increased at the start, then decreased slowly to zero. The LSTM trained for 10 epochs. Both models used the AdamW optimiser and gradient clipping.</p>
+        <div class="facts"><span>transformer: 75,000 steps</span><span>LSTM: 10 epochs</span><span>warm-up + cosine decay</span></div></div></li>
+      <li id="l6"><span class="num eval">6</span><div><h3>Test the models</h3>
+        <p>The team tested each model on all 5 million test characters. The measurements were accuracy, loss and perplexity. The transformer was more accurate than the LSTM.</p>
+        <div class="facts"><span>transformer: 67.94%</span><span>LSTM: 66.38%</span><span>perplexity 2.79 / 2.92</span></div></div></li>
+      <li id="l7"><span class="num eval">7</span><div><h3>Analyse the errors</h3>
+        <p>A later analysis found where the errors occur. The first letter of a word is correct only 21% of the time. These letters cause 39% of the total loss. Context after approximately 16 characters gives only a small improvement.</p>
+        <div class="facts"><span>first letter: 21% correct</span><span>space at word end: 92% correct</span><span>39% of loss from first letters</span></div></div></li>
+      <li id="l8"><span class="num eval">8</span><div><h3>Compare with Shannon (1951)</h3>
+        <p>Claude Shannon measured how well people predict the next letter of English. He used the same 27 characters. The LSTM did his test again with 2,000 samples. With few known letters, the LSTM was as accurate as people. With 99 known letters, people were more accurate: 80% against 59%.</p>
+        <div class="facts"><span>1 letter known: 28% vs 29%</span><span>99 letters known: 59% vs 80%</span></div></div></li>
+    </ol>
+
+    <div class="figure">
+      <p class="t">How the two models use the earlier text</p>
+      <p class="s">The LSTM keeps one memory and changes it after each character. The transformer looks directly at each earlier character in its window.</p>
+      <svg id="arch" viewBox="0 0 860 290" role="img" aria-label="LSTM and transformer diagrams"></svg>
+    </div>
+  </section>
+
+  <!-- ===================== STOCKS ===================== -->
+  <section class="project" id="stocks">
+    <p class="eyebrow">Project 3, NUS, Python, scikit-learn, PyTorch, In progress</p>
+    <h2>Weekly stock direction</h2>
+    <p class="goal"><strong>Goal:</strong> Predict if the adjusted close of a US stock or ETF is higher after five trading sessions. Use only data that is available at the close of the current day. Do not let future data enter the training data.</p>
+    <p><a class="btn sm" href="../projects/stock-direction/index.html">Open the stock direction project</a></p>
+
+    <div class="flow" style="--cols:5">
+      <a class="data" href="#s1"><b>1. Data</b>Audit 17.45M rows</a>
+      <a class="data" href="#s2"><b>2. Data</b>Rebuild calendar</a>
+      <a class="prep" href="#s3"><b>3. Preparation</b>Make 24 features</a>
+      <a class="prep" href="#s4"><b>4. Preparation</b>Freeze the data</a>
+      <a class="model" href="#s5"><b>5. Models</b>Compare 7 models</a>
+      <a class="model" href="#s6"><b>6. Models</b>Test the leader</a>
+      <a class="eval" href="#s7"><b>7. Evaluation</b>Score 2016–17</a>
+      <a class="eval" href="#s8"><b>8. Review</b>Divide the target</a>
+      <a class="eval" href="#s9"><b>9. Review</b>Relative target</a>
+      <a class="eval" href="#s10"><b>10. Review</b>Find the limit</a>
+    </div>
+
+    <ol class="steps">
+      <li id="s1"><span class="num data">1</span><div><h3>Audit the raw data</h3>
+        <p>The source file has 17.45 million daily rows for 8,507 tickers. The audit examined each row. It found incorrect prices, gaps, days with no change, and dates on weekends. The audit did not change the source file. It recorded each problem with its reason.</p>
+        <div class="facts"><span>17.45M rows</span><span>8,507 tickers</span><span>1962–2017</span></div></div></li>
+      <li id="s2"><span class="num data">2</span><div><h3>Rebuild the trading calendar</h3>
+        <p>"Five rows" is not always "five trading sessions", because some rows are missing. Thus, the project rebuilt the 2005–2017 exchange calendar from the holiday rules. All 3,202 session dates agreed with the reference dates.</p>
+        <div class="facts"><span>3,202 sessions</span><span>0 differences</span></div></div></li>
+      <li id="s3"><span class="num prep">3</span><div><h3>Make the features and the target</h3>
+        <p>The project calculated 24 features from present and past prices only. Examples are returns, volatility, bar shape, relative volume and beta. A row is usable only after 64 continuous valid bars. The target is 1 if the close after five sessions is higher. Equal closes are 0.</p>
+        <div class="facts"><span>24 features</span><span>64-bar minimum history</span><span>ties = 0</span></div></div></li>
+      <li id="s4"><span class="num prep">4</span><div><h3>Freeze the dataset</h3>
+        <p>The project calculated a hash of each data file. Each later notebook checks the hash before it starts. Thus, no step can change the data without a record.</p>
+        <div class="facts"><span>SHA-256 check in each notebook</span></div></div></li>
+      <li id="s5"><span class="num model">5</span><div><h3>Compare seven models</h3>
+        <p>The models were a constant baseline, ridge, elastic net, an additive spline model, gradient boosting, extra trees and a deep neural network. Each model used the same 200,000 training rows. The diagram below shows how the dates were divided.</p>
+        <div class="facts"><span>7 models</span><span>3 development years: 2013–2015</span><span>200,000 rows per fit</span></div></div></li>
+      <li id="s6"><span class="num model">6</span><div><h3>Test the leading model more</h3>
+        <p>The additive spline model was the best on log loss and accuracy. The project tested it with more data, a second random seed, calibration, and new fits each quarter. None of these changes gave a consistent improvement.</p>
+        <div class="facts"><span>up to 1M rows</span><span>2 seeds</span><span>quarterly refits</span></div></div></li>
+      <li id="s7"><span class="num eval">7</span><div><h3>Score the 2016–2017 holdout</h3>
+        <p>The project trained the final models on data before 2016. It saved the models before it opened the 2016–2017 outcomes. It used the same models for both years. Confidence intervals came from blocks of 20 dates, because rows on the same date are not independent.</p>
+        <div class="facts"><span>2.9M holdout rows</span><span>465 dates</span><span>20-date blocks</span></div></div></li>
+      <li id="s8"><span class="num eval">8</span><div><h3>Divide the target into two parts</h3>
+        <p>The project divided each label into a market part and an asset part. The market part explains 13% of the label variance for stocks. No model could predict it. The asset part has a small but stable signal (IC ≈ 0.07). The holdout can find only gains larger than 2.1 points.</p>
+        <div class="facts"><span>market part: 13% (stocks)</span><span>IC ≈ 0.07</span><span>smallest detectable gain: 2.1 pts</span></div></div></li>
+      <li id="s9"><span class="num eval">9</span><div><h3>Test a market-relative target</h3>
+        <p>The project trained the same models with a new target: "Did the asset beat the median asset on that date?" The ranking skill did not change much. But the uncertainty became 3.5 times smaller for stocks. The gain became clear: +1.83 points (interval +1.42 to +2.27).</p>
+        <div class="facts"><span>stocks: +1.83 pts</span><span>interval 3.5× narrower</span><span>IC 0.049 → 0.052</span></div></div></li>
+      <li id="s10"><span class="num eval">10</span><div><h3>Find the limit for any price feature</h3>
+        <p>Half of the stock labels come from a move smaller than 2%. For these rows, the label is almost a coin flip. Sheppard's formula connects accuracy to correlation: accuracy = ½ + arcsin(ρ)/π. The project found ρ = 0.060. An accuracy of 60% needs ρ = 0.31.</p>
+        <p>Gradient boosting fitted on the same rows reached an IC of 0.30. On new dates, its IC was 0.018. Thus, the additional patterns were noise. The SPY memory of 2005–2009 was gone in 2013–2015.</p>
+        <div class="facts"><span>ρ found: 0.060</span><span>60% needs ρ ≈ 0.31</span><span>boosting: 0.30 → 0.018</span><span>development years only</span></div></div></li>
+    </ol>
+
+    <div class="figure">
+      <p class="t">How the dates were divided (development year 2015)</p>
+      <p class="s">Each model learned only from earlier dates. A label needs five more sessions, so labels that end after a boundary were removed ("purged").</p>
+      <svg id="folds" viewBox="0 0 860 250" role="img" aria-label="Chronological fold diagram"></svg>
+    </div>
+  </section>
+
+  <nav class="pager" aria-label="More pages"><a href="../projects/stock-direction/index.html"><span>Previous</span><b>Stock direction</b></a><a class="next" href="../index.html#contact"><span>Next</span><b>Get in touch</b></a></nav>
+  <footer>Kyi Wai Thant. Numbers come from the project notebooks and saved reports.</footer>
+</main>
+
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+  const txt = (p, x, y, s, a = {}) => { const e = el("text", { x, y, ...a }, p); e.textContent = s; return e; };
+
+  // ---- Leak diagram: 3 epochs, 20 photos each, reshuffled; train/val/test segments
+  (() => {
+    const svg = document.getElementById("leak"), N = 20, x0 = 120, w = 34, h = 34;
+    const roles = [{ n: 14, c: "var(--data)", l: "train" }, { n: 4, c: "var(--prep)", l: "validation" }, { n: 2, c: "var(--eval)", l: "test" }];
+    const orders = [
+      [8, 2, 14, 17, 1, 6, 19, 0, 11, 4, 13, 9, 15, 3, 12, 5, 10, 7, 18, 16],
+      [5, 14, 0, 9, 18, 3, 12, 16, 7, 1, 10, 19, 4, 11, 2, 8, 15, 6, 13, 17],
+      [3, 11, 7, 0, 15, 9, 1, 18, 5, 12, 4, 16, 2, 10, 8, 19, 6, 13, 17, 14],
+    ];
+    const names = ["Epoch 1", "Epoch 2", "Final test"];
+    const star = 14;
+    orders.forEach((ord, r) => {
+      const y = 20 + r * 62;
+      txt(svg, 0, y + 22, names[r], { class: "lbl" });
+      let i = 0;
+      roles.forEach((ro) => {
+        for (let k = 0; k < ro.n; k++, i++) {
+          const x = x0 + i * w, id = ord[i];
+          el("rect", { x: x + 1, y, width: w - 3, height: h, rx: 5, fill: ro.c, opacity: id === star ? 1 : 0.28 }, svg);
+          if (id === star) txt(svg, x + w / 2 - 1, y + 23, "★", { "text-anchor": "middle", style: "fill:#fff;font-size:16px" });
+        }
+      });
+      const roleOfStar = ord.indexOf(star) < 14 ? "train" : ord.indexOf(star) < 18 ? "validation" : "test";
+      txt(svg, x0 + N * w + 6, y + 22, "★ in " + roleOfStar, { class: "lbl" });
+    });
+    roles.reduce((acc, ro) => { txt(svg, x0 + (acc + ro.n / 2) * w, 220, ro.l, { "text-anchor": "middle" }); return acc + ro.n; }, 0);
+  })();
+
+  // ---- Architecture diagram
+  (() => {
+    const svg = document.getElementById("arch");
+    const chars = ["t", "h", "e", "␣", "c", "a"], cw = 46;
+    // LSTM (left)
+    txt(svg, 0, 18, "LSTM: one memory, updated after each character", { class: "lbl", style: "font-weight:600;fill:var(--fg)" });
+    chars.forEach((c, i) => {
+      const x = 10 + i * (cw + 18);
+      el("rect", { x, y: 190, width: cw, height: 34, rx: 6, fill: "var(--data-soft)", stroke: "var(--data)" }, svg);
+      txt(svg, x + cw / 2, 212, c, { "text-anchor": "middle", class: "lbl" });
+      el("rect", { x, y: 90, width: cw, height: 50, rx: 8, fill: "var(--model-soft)", stroke: "var(--model)" }, svg);
+      txt(svg, x + cw / 2, 120, "mem", { "text-anchor": "middle" });
+      el("line", { x1: x + cw / 2, y1: 190, x2: x + cw / 2, y2: 142, stroke: "var(--axis)", "stroke-width": 1.5, "marker-end": "url(#ah)" }, svg);
+      if (i < chars.length - 1) el("line", { x1: x + cw, y1: 115, x2: x + cw + 16, y2: 115, stroke: "var(--model)", "stroke-width": 2, "marker-end": "url(#ah2)" }, svg);
+    });
+    const lx = 10 + 5 * (cw + 18) + cw / 2;
+    el("line", { x1: lx, y1: 90, x2: lx, y2: 52, stroke: "var(--axis)", "stroke-width": 1.5, "marker-end": "url(#ah)" }, svg);
+    txt(svg, lx, 44, "next: t?", { "text-anchor": "middle", class: "lbl" });
+    // Transformer (right)
+    const ox = 450;
+    txt(svg, ox, 18, "Transformer: looks at each earlier character", { class: "lbl", style: "font-weight:600;fill:var(--fg)" });
+    const tx = ox + 5 * (cw + 18) + cw / 2;
+    el("rect", { x: tx - 40, y: 90, width: 80, height: 50, rx: 8, fill: "var(--model-soft)", stroke: "var(--model)" }, svg);
+    txt(svg, tx, 120, "attention", { "text-anchor": "middle" });
+    const weights = [0.15, 0.1, 0.25, 0.35, 0.6, 0.9];
+    chars.forEach((c, i) => {
+      const x = ox + i * (cw + 18);
+      el("rect", { x, y: 190, width: cw, height: 34, rx: 6, fill: "var(--data-soft)", stroke: "var(--data)" }, svg);
+      txt(svg, x + cw / 2, 212, c, { "text-anchor": "middle", class: "lbl" });
+      el("line", { x1: x + cw / 2, y1: 190, x2: tx, y2: 142, stroke: "var(--eval)", "stroke-width": 1 + weights[i] * 3, opacity: 0.25 + weights[i] * 0.75 }, svg);
+    });
+    el("line", { x1: tx, y1: 90, x2: tx, y2: 52, stroke: "var(--axis)", "stroke-width": 1.5, "marker-end": "url(#ah)" }, svg);
+    txt(svg, tx, 44, "next: t?", { "text-anchor": "middle", class: "lbl" });
+    txt(svg, ox, 260, "Line width shows how much each character is used (example values).", {});
+    txt(svg, 0, 260, "Window: 128 characters. Memory size: 512 per layer.", {});
+    txt(svg, ox, 280, "Window: 192 characters.", {});
+    const defs = el("defs", {}, svg);
+    [["ah", "var(--axis)"], ["ah2", "var(--model)"]].forEach(([id, c]) => {
+      const m = el("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: "auto" }, defs);
+      el("path", { d: "M0,0 L10,5 L0,10 z", fill: c }, m);
+    });
+  })();
+
+  // ---- Fold diagram
+  (() => {
+    const svg = document.getElementById("folds"), x0 = 150, x1 = 840, y0 = 2005, y1 = 2018;
+    const sx = (y) => x0 + (y - y0) / (y1 - y0) * (x1 - x0);
+    for (let y = 2005; y <= 2018; y++) { el("line", { x1: sx(y), x2: sx(y), y1: 20, y2: 200, stroke: "var(--grid)" }, svg); if (y < 2018) txt(svg, sx(y) + 2, 220, "’" + String(y).slice(2), {}); }
+    const rows = [
+      { l: "1. Choose settings", segs: [[2005.4, 2013.99, "var(--data)", "learn"], [2014, 2014.99, "var(--prep)", "check"]] },
+      { l: "2. Fit final model", segs: [[2005.4, 2014.99, "var(--data)", "learn"]] },
+      { l: "3. Evaluate", segs: [[2015, 2015.99, "var(--eval)", "test 2015"]] },
+      { l: "Holdout (later)", segs: [[2005.4, 2015.99, "var(--data)", "learn"], [2016, 2017.86, "var(--model)", "2016–17"]] },
+    ];
+    rows.forEach((r, i) => {
+      const y = 30 + i * 44;
+      txt(svg, 0, y + 18, r.l, { class: "lbl" });
+      r.segs.forEach(([a, b, c, lab]) => {
+        el("rect", { x: sx(a), y, width: sx(b) - sx(a), height: 26, rx: 5, fill: c, opacity: 0.85 }, svg);
+        txt(svg, (sx(a) + sx(b)) / 2, y + 17, lab, { "text-anchor": "middle", style: "fill:#fff;font-size:11px" });
+        if (lab !== "test 2015" && lab !== "2016–17") {
+          el("rect", { x: sx(b) - 4, y: y - 3, width: 6, height: 32, fill: "var(--card)" }, svg);
+        }
+      });
+    });
+    txt(svg, x0, 244, "White gaps: labels that end after the boundary are removed. Each development year (2013, 2014, 2015) repeats steps 1–3.", {});
+  })();
+})();
+</script>
+</body>
+</html>

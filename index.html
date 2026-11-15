@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kyi Wai Thant</title>
+<meta name="description" content="Kyi Wai Thant, Data Science and Analytics student at NUS. Machine learning projects you can try in the browser, with the analysis behind each result.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%2315223d%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2712%27 fill=%27%23eaa417%27/%3E%3C/svg%3E">
+<meta property="og:title" content="Kyi Wai Thant">
+<meta property="og:description" content="Machine learning projects you can try in the browser, with the analysis behind each result.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#15223d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+<script src="site.js"></script>
+</head>
+<body>
+
+<header class="nav"><div class="wrap nav-in">
+  <a class="brand" href="index.html">Kyi Wai Thant</a>
+  <nav aria-label="Site">
+    <a href="#projects">Projects</a>
+    <a href="process/index.html">How I work</a>
+    <a href="#about">About</a>
+    <a href="#contact">Contact</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <div class="home-hero">
+    <div>
+      <p class="who">Kyi Wai Thant. Data Science and Analytics at NUS, graduating in 2027.</p>
+      <h1>I like to know why a model works, and whether it really does.</h1>
+      <p class="lede">I'm a curious student who enjoys the theory behind machine learning. I'm looking for a first role where that theory has to hold up in a real system.</p>
+      <p class="status"><span class="dot"></span>Open to internships and graduate roles in ML and data science</p>
+      <div class="cta">
+        <a class="btn primary" href="#projects">See the projects</a>
+        <a class="btn" href="#contact">Get in touch</a>
+        <a class="btn" href="https://github.com/kiwi-Per">GitHub</a>
+      </div>
+    </div>
+
+    <div class="bench">
+      <p class="bench-t">A mouse that learns a maze</p>
+      <p class="bench-s">My version of Theseus, the relay-driven mouse Claude Shannon built in 1950. I saw the original at the MIT Museum in 2026, and it led me into his work on information. Click a wall to add or remove it. Click a square to move the goal.</p>
+      <div id="maze"></div>
+      <p class="readout" id="maze-status" aria-live="polite"></p>
+      <div class="controls">
+        <button class="btn sm primary" type="button" id="maze-again">Run again</button>
+        <button class="btn sm" type="button" id="maze-new">New maze</button>
+        <span class="small muted">The arrows are the memory. Each square keeps the way the mouse last left it.</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="home-sec" id="projects">
+    <h2>Projects you can try</h2>
+    <p class="sub">Each project has a full page with the results, the charts and what I would do differently.</p>
+
+    <div class="proj">
+      <div class="proj-text">
+        <h3><a href="projects/char-lstm/index.html">Predicting text one letter at a time</a></h3>
+        <p class="kind">Team project. JAX and Flax.</p>
+        <p>We wrote a transformer and an LSTM from scratch and trained them on 90 million characters of Wikipedia. The transformer won by a small margin. Later I replayed Claude Shannon's 1951 letter-guessing experiment with the trained model. It matched people when it knew only a few letters, and lost to them when it knew many.</p>
+        <ul class="facts"><li>67.94% vs 66.38% accuracy</li><li>First letters of words cause 39% of the loss</li><li>99 letters known: people 80%, model 59%</li></ul>
+        <div class="cta"><a class="btn primary" href="projects/char-lstm/index.html">Open the project</a><a class="btn" href="projects/char-lstm/index.html#game">Play the guessing game</a></div>
+      </div>
+      <div class="bench">
+        <p class="bench-t">Where the model gets surprised</p>
+        <p class="bench-s">Real output from the trained LSTM. Darker letters were harder to predict. The start of a word is usually the hard part.</p>
+        <div id="surprise"></div>
+      </div>
+    </div>
+
+    <div class="proj flip">
+      <div class="proj-text">
+        <h3><a href="projects/traffic-signs/index.html">Does a bigger network classify better?</a></h3>
+        <p class="kind">Team of 4. TensorFlow and Keras.</p>
+        <p>We compared five CNNs on 23 classes of traffic signs. A small pretrained network beat one about eight times its size, and fine-tuning cut its reported test errors from 12 to 2. When I reviewed the pipeline afterwards, I found that the test set changed every epoch, so most test photos had already been used for training.</p>
+        <ul class="facts"><li>5 CNNs, 23 classes</li><li>12 → 2 reported test errors</li><li>About 2 in 3 test photos seen in training</li></ul>
+        <div class="cta"><a class="btn primary" href="projects/traffic-signs/index.html">Open the project</a></div>
+      </div>
+      <div class="bench">
+        <p class="bench-t">Watch the test set leak</p>
+        <p class="bench-s">A simulation with our data loader's settings: 9,200 photos, reshuffled every epoch, with the train and test split taken afterwards. Each square is one test photo.</p>
+        <div id="leak"></div>
+      </div>
+    </div>
+
+    <div class="proj">
+      <div class="proj-text">
+        <h3><a href="projects/stock-direction/index.html">Can price history predict next week's direction?</a></h3>
+        <p class="kind">NUS project, in progress. Python, scikit-learn and PyTorch.</p>
+        <p>I audited 17.45 million daily records and compared seven models with strict time-based testing. The answer is barely: 53.4% against a 51.8% baseline on 2013 to 2015. Most of the project explains why, and shows that features built from prices alone are unlikely to do much better.</p>
+        <ul class="facts"><li>17.45M rows, 8,507 tickers</li><li>7 models, 16 notebooks</li><li>60% accuracy needs 5× the signal</li></ul>
+        <div class="cta"><a class="btn primary" href="projects/stock-direction/index.html">Open the project</a></div>
+      </div>
+      <div class="bench">
+        <p class="bench-t">How much signal would 60% accuracy need?</p>
+        <p class="bench-s">A fixed formula links direction accuracy to the correlation between forecast and return. Drag the slider away from what I found.</p>
+        <div id="shep"></div>
+      </div>
+    </div>
+
+    <div class="more">
+      <article>
+        <h3>Telemedicine safety layer</h3>
+        <p class="kind">NUS project. Python.</p>
+        <p>A safety layer that checks patient inputs before the diagnostic model runs, and checks its recommendations before they are shown. It runs separately from the model, to reduce unsafe or out-of-scope guidance.</p>
+        <ul class="facts"><li>22 versioned rules</li><li>2 checkpoints</li><li>64 end-to-end test cases</li></ul>
+      </article>
+      <article>
+        <h3>Multi-agent housing assistant</h3>
+        <p class="kind">SimplifyNext Agentic AI Hackathon. Gradio and AWS Bedrock.</p>
+        <p>Four agents for property search, grant eligibility, affordability and policy lookup, in one chat that knows the user's profile. It uses web search and retrieval-augmented generation to simplify Singapore housing research.</p>
+        <ul class="facts"><li>4 agents in 1 chat</li><li>Retrieval-augmented generation</li><li>Web search</li></ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="home-sec" id="how">
+    <h2>How I work</h2>
+    <p class="sub">Every project goes through the same four stages. The last one is where I learn the most.</p>
+    <ol class="stages">
+      <li style="--c:var(--data)"><b>Data</b><span>Look at every row before modelling. Count the classes and find the gaps.</span></li>
+      <li style="--c:var(--prep)"><b>Preparation</b><span>Split first, then transform. Fit scaling on training data only.</span></li>
+      <li style="--c:var(--model)"><b>Models</b><span>Start with a simple baseline. Keep a complex model only if it beats it.</span></li>
+      <li style="--c:var(--eval)"><b>Review</b><span>Ask what the result would be on data the model has never seen.</span></li>
+    </ol>
+    <a class="btn" href="process/index.html">See each project step by step</a>
+  </section>
+
+  <section class="home-sec" id="about">
+    <h2>About me</h2>
+    <div class="about-grid" style="margin-top:18px">
+      <div>
+        <p>I'm a Data Science and Analytics undergraduate at the National University of Singapore. I enjoy learning for its own sake, especially the theory side of machine learning: why an optimiser converges, what a stochastic process assumes, and where a model's guarantees stop.</p>
+        <p>That curiosity sends me back to the sources. At the MIT Museum in 2026 I found Claude Shannon's maze-solving mouse, then his information theory, then his 1951 paper on predicting English one letter at a time. It asked the same question my team had trained neural networks on, so I went back and <a href="projects/char-lstm/index.html#shannon">compared our results with his</a>.</p>
+        <p>I haven't done an internship yet. What I want next is to see this way of working hold up outside a notebook. I speak English and Chinese natively.</p>
+      </div>
+      <dl class="skills">
+        <dt>Languages</dt><dd>Python, R, Java</dd>
+        <dt>Libraries</dt><dd>PyTorch, TensorFlow and Keras, JAX and Flax, scikit-learn, pandas, NumPy, PyArrow</dd>
+        <dt>Methods</dt><dd>Time series analysis, classification, deep learning (CNNs, transfer learning, transformers), statistical testing, convex optimisation</dd>
+        <dt>Tools</dt><dd>Git and GitHub, Jupyter</dd>
+        <dt>Coursework</dt><dd>Machine Learning, Mathematical Statistics, Applied Time Series Analysis, Stochastic Processes, Convex Optimisation</dd>
+      </dl>
+    </div>
+  </section>
+
+  <div class="contact" id="contact">
+    <div>
+      <h2>Get in touch</h2>
+      <p>I'm open to internships and graduate roles in machine learning and data science, and happy to talk through any project on this site.</p>
+    </div>
+    <div class="ways">
+      <a class="mail" href="mailto:e1288178@u.nus.edu">e1288178@u.nus.edu</a>
+      <div class="cta">
+        <button class="btn sm" type="button" data-copy="e1288178@u.nus.edu">Copy email address</button>
+        <a class="btn sm" href="https://github.com/kiwi-Per">GitHub: kiwi-Per</a>
+      </div>
+    </div>
+  </div>
+
+  <footer>© 2026 Kyi Wai Thant. Every number on this site comes from my project notebooks.</footer>
+</main>
+
+<script src="home-data.js"></script>
+<script src="widgets.js"></script>
+<script>
+(() => {
+  const m = Widgets.maze(document.getElementById("maze"), document.getElementById("maze-status"));
+  document.getElementById("maze-again").onclick = m.again;
+  document.getElementById("maze-new").onclick = m.shuffle;
+  Widgets.surprise(document.getElementById("surprise"), window.HOME.surprise);
+  Widgets.leakSim(document.getElementById("leak"));
+  Widgets.sheppard(document.getElementById("shep"), 0.06);
+})();
+</script>
+</body>
+</html>
